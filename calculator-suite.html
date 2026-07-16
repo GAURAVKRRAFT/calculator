@@ -1,0 +1,1967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculus — All-in-One Calculator Suite</title>
+<style>
+/* ============================================================
+   DESIGN TOKENS / THEME
+   ============================================================ */
+:root{
+  --accent:#6C63FF;
+  --accent-2:#8F7FFF;
+  --bg:#eef0f6;
+  --bg-2:#e4e7f2;
+  --surface: rgba(255,255,255,0.65);
+  --surface-solid:#ffffff;
+  --border: rgba(15,15,25,0.08);
+  --text:#161622;
+  --text-dim:#5b5b6b;
+  --text-faint:#8b8b9c;
+  --shadow: 0 10px 30px rgba(30,30,60,0.08), 0 2px 8px rgba(30,30,60,0.06);
+  --shadow-lg: 0 20px 50px rgba(30,30,60,0.14), 0 6px 16px rgba(30,30,60,0.08);
+  --radius: 20px;
+  --radius-sm: 12px;
+  --good:#2ecc71; --warn:#f5a623; --bad:#ff5b5b; --info:#3ea6ff;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --dur:.25s;
+}
+[data-theme="dark"]{
+  --bg:#0e0e14;
+  --bg-2:#141420;
+  --surface: rgba(30,30,42,0.6);
+  --surface-solid:#181822;
+  --border: rgba(255,255,255,0.08);
+  --text:#f1f1f6;
+  --text-dim:#b3b3c2;
+  --text-faint:#77778a;
+  --shadow: 0 10px 30px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-lg: 0 20px 60px rgba(0,0,0,0.5), 0 6px 20px rgba(0,0,0,0.35);
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0; font-family:var(--font); background:
+    radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 45%),
+    radial-gradient(circle at 90% 20%, color-mix(in srgb, var(--accent-2) 10%, transparent), transparent 40%),
+    var(--bg);
+  color:var(--text); -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  transition:background var(--dur), color var(--dur);
+}
+::selection{ background:var(--accent); color:#fff; }
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-thumb{background:var(--border); border-radius:10px;}
+a{color:inherit;}
+button{font-family:inherit;}
+input,select{font-family:inherit;}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.app{ display:grid; grid-template-columns:264px 1fr; min-height:100vh; }
+.sidebar{
+  padding:22px 16px; border-right:1px solid var(--border);
+  background:var(--surface); backdrop-filter:blur(20px);
+  position:sticky; top:0; height:100vh; overflow-y:auto; z-index:20;
+}
+.brand{ display:flex; align-items:center; gap:10px; padding:6px 8px 20px; }
+.brand-mark{ width:36px; height:36px; border-radius:11px; background:linear-gradient(135deg,var(--accent),var(--accent-2)); display:flex; align-items:center; justify-content:center; box-shadow:0 6px 16px color-mix(in srgb, var(--accent) 45%, transparent); flex:none;}
+.brand-mark svg{ width:20px; height:20px; }
+.brand-name{ font-weight:700; font-size:18px; letter-spacing:.2px;}
+.brand-sub{ font-size:11px; color:var(--text-faint); margin-top:-2px;}
+
+.search-box{ position:relative; margin-bottom:16px; }
+.search-box input{
+  width:100%; padding:10px 12px 10px 34px; border-radius:12px; border:1px solid var(--border);
+  background:var(--surface-solid); color:var(--text); font-size:13px; outline:none;
+  transition:box-shadow var(--dur), border-color var(--dur);
+}
+.search-box input:focus{ border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
+.search-box svg{ position:absolute; left:10px; top:50%; transform:translateY(-50%); width:15px; height:15px; opacity:.5;}
+
+.nav-group{ margin-bottom:6px; }
+.nav-group-title{ font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-faint); margin:14px 8px 6px; font-weight:700;}
+.nav-item{
+  display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:11px; cursor:pointer;
+  font-size:13.5px; color:var(--text-dim); margin-bottom:2px; transition:background var(--dur), color var(--dur), transform var(--dur);
+  user-select:none; position:relative;
+}
+.nav-item:hover{ background:color-mix(in srgb, var(--accent) 8%, transparent); color:var(--text); }
+.nav-item.active{ background:linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, var(--accent-2) 12%, transparent)); color:var(--text); font-weight:600; }
+.nav-item.active::before{ content:""; position:absolute; left:-16px; top:50%; transform:translateY(-50%); width:4px; height:60%; background:var(--accent); border-radius:4px;}
+.nav-item .ic{ width:16px; height:16px; flex:none; opacity:.85;}
+.nav-fav{ margin-left:auto; opacity:0; width:13px; height:13px; }
+.nav-item:hover .nav-fav{ opacity:.5; }
+.nav-fav.on{ opacity:1 !important; color:var(--warn); }
+
+.main{ padding:26px 34px 80px; max-width:1180px; width:100%; }
+.topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; gap:14px; flex-wrap:wrap;}
+.page-title{ font-size:24px; font-weight:800; letter-spacing:-.2px; }
+.page-sub{ color:var(--text-faint); font-size:13px; margin-top:2px;}
+.topbar-actions{ display:flex; gap:8px; align-items:center; }
+.icon-btn{
+  width:38px; height:38px; border-radius:12px; border:1px solid var(--border); background:var(--surface-solid);
+  display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-dim);
+  transition:transform var(--dur), background var(--dur), color var(--dur); box-shadow:var(--shadow);
+}
+.icon-btn:hover{ transform:translateY(-2px); color:var(--accent); }
+.icon-btn svg{ width:17px; height:17px; }
+
+.panel{ display:none; animation:fadeIn .35s ease; }
+.panel.active{ display:block; }
+@keyframes fadeIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+.card{
+  background:var(--surface); backdrop-filter:blur(16px); border:1px solid var(--border); border-radius:var(--radius);
+  padding:20px; box-shadow:var(--shadow); transition:box-shadow var(--dur), transform var(--dur);
+}
+.card:hover{ box-shadow:var(--shadow-lg); }
+.grid{ display:grid; gap:18px; }
+.grid-2{ grid-template-columns:1fr 1fr; }
+.grid-3{ grid-template-columns:repeat(3,1fr); }
+.grid-4{ grid-template-columns:repeat(4,1fr); }
+@media(max-width:980px){ .app{grid-template-columns:1fr;} .sidebar{ position:fixed; left:-280px; top:0; width:264px; transition:left var(--dur); box-shadow:var(--shadow-lg);} .sidebar.open{left:0;} .grid-2,.grid-3,.grid-4{grid-template-columns:1fr;} .main{padding:18px;} }
+
+.section-title{ font-size:15px; font-weight:700; margin:0 0 14px; display:flex; align-items:center; gap:8px;}
+.section-title .dot{ width:8px; height:8px; border-radius:50%; background:var(--accent); }
+
+label.field-label{ font-size:12px; color:var(--text-faint); font-weight:600; display:block; margin-bottom:5px; letter-spacing:.02em;}
+.input, select.input{
+  width:100%; padding:11px 12px; border-radius:12px; border:1px solid var(--border); background:var(--surface-solid);
+  color:var(--text); font-size:14px; outline:none; transition:border-color var(--dur), box-shadow var(--dur);
+}
+.input:focus{ border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+.field{ margin-bottom:14px; }
+.field-row{ display:flex; gap:10px; }
+.field-row > *{ flex:1; }
+
+.btn{
+  border:none; border-radius:12px; padding:11px 18px; font-size:13.5px; font-weight:700; cursor:pointer;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:#fff; position:relative; overflow:hidden;
+  box-shadow:0 8px 20px color-mix(in srgb, var(--accent) 35%, transparent); transition:transform var(--dur), box-shadow var(--dur);
+}
+.btn:hover{ transform:translateY(-2px); }
+.btn:active{ transform:translateY(0); }
+.btn.ghost{ background:var(--surface-solid); color:var(--text); border:1px solid var(--border); box-shadow:none; }
+.btn.sm{ padding:7px 12px; font-size:12px; border-radius:9px; }
+.btn .ripple{ position:absolute; border-radius:50%; background:rgba(255,255,255,.5); transform:scale(0); animation:ripple .6s ease-out; pointer-events:none;}
+@keyframes ripple{ to{ transform:scale(3); opacity:0; } }
+
+.result-card{
+  border-radius:16px; padding:18px 20px; background:linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, var(--surface-solid)), color-mix(in srgb, var(--accent-2) 8%, var(--surface-solid)));
+  border:1px solid var(--border); margin-top:6px;
+}
+.result-value{ font-size:28px; font-weight:800; letter-spacing:-.5px; }
+.result-label{ font-size:12px; color:var(--text-faint); font-weight:600; margin-bottom:4px; text-transform:uppercase; letter-spacing:.06em;}
+.formula-note{ font-size:12px; color:var(--text-faint); margin-top:10px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+
+.summary-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-top:12px;}
+.mini-card{ background:var(--surface-solid); border:1px solid var(--border); border-radius:13px; padding:12px 14px;}
+.mini-card .l{ font-size:11px; color:var(--text-faint); font-weight:700; text-transform:uppercase; letter-spacing:.04em;}
+.mini-card .v{ font-size:17px; font-weight:800; margin-top:3px;}
+
+table.amort{ width:100%; border-collapse:collapse; font-size:12.5px; margin-top:14px;}
+table.amort th{ text-align:left; padding:8px 10px; color:var(--text-faint); font-weight:700; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--surface-solid); }
+table.amort td{ padding:7px 10px; border-bottom:1px solid var(--border); }
+.table-wrap{ max-height:320px; overflow:auto; border-radius:12px; border:1px solid var(--border); margin-top:10px;}
+
+canvas.chart{ width:100%; height:220px; margin-top:14px; border-radius:12px; }
+
+.progress{ height:10px; border-radius:10px; background:var(--bg-2); overflow:hidden; margin-top:6px;}
+.progress > div{ height:100%; border-radius:10px; background:linear-gradient(90deg,var(--accent),var(--accent-2)); transition:width .6s cubic-bezier(.2,.9,.3,1); }
+
+.badge{ display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:20px; font-size:11.5px; font-weight:700;}
+.badge.good{ background:color-mix(in srgb, var(--good) 18%, transparent); color:var(--good); }
+.badge.warn{ background:color-mix(in srgb, var(--warn) 18%, transparent); color:var(--warn); }
+.badge.bad{ background:color-mix(in srgb, var(--bad) 18%, transparent); color:var(--bad); }
+.badge.info{ background:color-mix(in srgb, var(--info) 18%, transparent); color:var(--info); }
+
+/* Standard/Scientific calculator */
+.calc-wrap{ display:grid; grid-template-columns:1fr 300px; gap:18px; align-items:start; }
+@media(max-width:980px){ .calc-wrap{grid-template-columns:1fr;} }
+.calc-display{
+  background:var(--surface-solid); border-radius:18px; padding:20px; border:1px solid var(--border); box-shadow:var(--shadow); margin-bottom:14px;
+}
+.calc-expr{ min-height:22px; text-align:right; color:var(--text-faint); font-size:14px; word-break:break-all; }
+.calc-result{ text-align:right; font-size:38px; font-weight:800; margin-top:6px; word-break:break-all; letter-spacing:-.5px;}
+.mem-tag{ font-size:11px; color:var(--accent); font-weight:700;}
+.calc-buttons{ display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+.calc-buttons.sci{ grid-template-columns:repeat(6,1fr); }
+.calc-btn{
+  padding:14px 0; border-radius:13px; border:1px solid var(--border); background:var(--surface-solid); color:var(--text);
+  font-size:15px; font-weight:600; cursor:pointer; transition:transform .12s ease, background var(--dur); position:relative; overflow:hidden;
+}
+.calc-btn:hover{ background:color-mix(in srgb, var(--accent) 10%, var(--surface-solid)); }
+.calc-btn:active{ transform:scale(.94); }
+.calc-btn.op{ color:var(--accent); font-weight:800;}
+.calc-btn.eq{ background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:#fff; border:none; }
+.calc-btn.fn{ font-size:12.5px; }
+.calc-btn.wide{ grid-column:span 2; }
+.calc-side .card{ margin-bottom:14px; }
+.deg-toggle{ display:flex; gap:6px; }
+.deg-toggle button{ flex:1; padding:8px; border-radius:10px; border:1px solid var(--border); background:var(--surface-solid); color:var(--text-dim); cursor:pointer; font-size:12px; font-weight:700;}
+.deg-toggle button.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
+.history-list{ max-height:260px; overflow-y:auto; }
+.history-item{ padding:9px 4px; border-bottom:1px solid var(--border); font-size:12.5px; cursor:pointer; display:flex; justify-content:space-between; gap:8px;}
+.history-item:hover{ color:var(--accent); }
+.history-item .ex{ color:var(--text-faint); }
+.empty-state{ text-align:center; color:var(--text-faint); font-size:12.5px; padding:20px 0;}
+
+/* Category tiles */
+.tile-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:14px; }
+.tile{ padding:18px; cursor:pointer; }
+.tile-ic{ width:42px; height:42px; border-radius:13px; display:flex; align-items:center; justify-content:center; margin-bottom:10px; background:linear-gradient(135deg,color-mix(in srgb, var(--accent) 25%, transparent), color-mix(in srgb, var(--accent-2) 20%, transparent)); }
+.tile-ic svg{ width:20px; height:20px; color:var(--accent);}
+.tile-name{ font-weight:700; font-size:14px; }
+.tile-desc{ font-size:12px; color:var(--text-faint); margin-top:3px;}
+
+/* Sub-calculator container inside category page */
+.subcalc{ display:none; }
+.subcalc.active{ display:block; animation:fadeIn .3s ease; }
+.crumb{ font-size:12.5px; color:var(--accent); cursor:pointer; margin-bottom:14px; display:inline-flex; align-items:center; gap:6px; font-weight:700; }
+
+/* Settings */
+.switch{ position:relative; width:44px; height:24px; }
+.switch input{ opacity:0; width:0; height:0; }
+.slider-tg{ position:absolute; inset:0; background:var(--bg-2); border-radius:20px; cursor:pointer; transition:background var(--dur); border:1px solid var(--border);}
+.slider-tg::before{ content:""; position:absolute; width:18px; height:18px; left:2px; top:2px; background:#fff; border-radius:50%; transition:transform var(--dur); box-shadow:0 2px 4px rgba(0,0,0,.2);}
+.switch input:checked + .slider-tg{ background:var(--accent); }
+.switch input:checked + .slider-tg::before{ transform:translateX(20px); }
+.settings-row{ display:flex; align-items:center; justify-content:space-between; padding:12px 4px; border-bottom:1px solid var(--border); }
+.settings-row:last-child{ border-bottom:none; }
+.color-dot{ width:26px; height:26px; border-radius:50%; cursor:pointer; border:2px solid transparent; transition:transform var(--dur);}
+.color-dot:hover{ transform:scale(1.12); }
+.color-dot.sel{ border-color:var(--text); }
+.color-row{ display:flex; gap:10px; flex-wrap:wrap; }
+
+/* toast */
+#toast{ position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--surface-solid); border:1px solid var(--border); padding:12px 20px; border-radius:14px; box-shadow:var(--shadow-lg); opacity:0; pointer-events:none; transition:all .3s ease; z-index:200; font-size:13px; font-weight:600;}
+#toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+.hamburger{ display:none; }
+@media(max-width:980px){ .hamburger{ display:flex; } }
+
+.currency-swap{ display:flex; align-items:center; justify-content:center; margin:6px 0; }
+.currency-swap button{ width:38px; height:38px; border-radius:50%; border:1px solid var(--border); background:var(--surface-solid); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:transform var(--dur);}
+.currency-swap button:hover{ transform:rotate(180deg); color:var(--accent);}
+
+.tag-chip{ display:inline-flex; align-items:center; gap:5px; padding:5px 10px; border-radius:20px; background:var(--surface-solid); border:1px solid var(--border); font-size:12px; cursor:pointer; margin:3px 4px 0 0;}
+.tag-chip.on{ background:var(--accent); color:#fff; border-color:var(--accent);}
+
+.search-results-empty{ padding:40px 0; text-align:center; color:var(--text-faint); }
+</style>
+</head>
+<body data-theme="light">
+<div class="app">
+  <!-- ============================================================ SIDEBAR ============================================================ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="3"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="12" x2="8" y2="12"/><line x1="12" y1="12" x2="12" y2="12"/><line x1="16" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="12" y1="16" x2="12" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg></div>
+      <div><div class="brand-name">Calculus</div><div class="brand-sub">all-in-one suite</div></div>
+    </div>
+    <div class="search-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.6" y2="16.6"/></svg>
+      <input id="globalSearch" placeholder="Search calculators…" autocomplete="off">
+    </div>
+    <nav id="navList"></nav>
+  </aside>
+
+  <!-- ============================================================ MAIN ============================================================ -->
+  <main class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="icon-btn hamburger" id="hamburgerBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></div>
+        <div>
+          <div class="page-title" id="pageTitle">Dashboard</div>
+          <div class="page-sub" id="pageSub">Everything you need, in one place</div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <div class="icon-btn" id="themeBtn" title="Toggle theme">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="themeIcon"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------- DASHBOARD ---------- -->
+    <section class="panel" id="panel-dashboard">
+      <div class="card" style="margin-bottom:18px;">
+        <div class="section-title"><span class="dot"></span>Recent</div>
+        <div id="recentList" class="tile-grid"></div>
+      </div>
+      <div class="card">
+        <div class="section-title"><span class="dot"></span>All Calculators</div>
+        <div id="allTiles" class="tile-grid"></div>
+      </div>
+    </section>
+
+    <!-- ---------- STANDARD ---------- -->
+    <section class="panel" id="panel-standard">
+      <div class="calc-wrap">
+        <div>
+          <div class="calc-display">
+            <div class="mem-tag" id="stdMemTag">&nbsp;</div>
+            <div class="calc-expr" id="stdExpr">0</div>
+            <div class="calc-result" id="stdResult">0</div>
+          </div>
+          <div class="calc-buttons" id="stdButtons"></div>
+        </div>
+        <div class="calc-side">
+          <div class="card">
+            <div class="section-title"><span class="dot"></span>History</div>
+            <div class="history-list" id="stdHistory"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- SCIENTIFIC ---------- -->
+    <section class="panel" id="panel-scientific">
+      <div class="calc-wrap">
+        <div>
+          <div class="calc-display">
+            <div class="mem-tag" id="sciMemTag">&nbsp;</div>
+            <div class="calc-expr" id="sciExpr">0</div>
+            <div class="calc-result" id="sciResult">0</div>
+          </div>
+          <div class="calc-buttons sci" id="sciButtons"></div>
+        </div>
+        <div class="calc-side">
+          <div class="card">
+            <div class="section-title"><span class="dot"></span>Mode</div>
+            <div class="deg-toggle">
+              <button id="degBtn" class="active">DEG</button>
+              <button id="radBtn">RAD</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-title"><span class="dot"></span>History</div>
+            <div class="history-list" id="sciHistory"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- FINANCIAL ---------- -->
+    <section class="panel" id="panel-financial">
+      <div id="financialHub" class="tile-grid" style="margin-bottom:18px;"></div>
+      <div id="financialCalcs"></div>
+    </section>
+
+    <!-- ---------- HEALTH ---------- -->
+    <section class="panel" id="panel-health">
+      <div id="healthHub" class="tile-grid" style="margin-bottom:18px;"></div>
+      <div id="healthCalcs"></div>
+    </section>
+
+    <!-- ---------- UNIT CONVERTER ---------- -->
+    <section class="panel" id="panel-units">
+      <div class="card">
+        <div class="section-title"><span class="dot"></span>Category</div>
+        <div class="tag-chip-row" id="unitCatChips" style="margin-bottom:16px;"></div>
+        <div id="unitConverterBody"></div>
+      </div>
+    </section>
+
+    <!-- ---------- CURRENCY ---------- -->
+    <section class="panel" id="panel-currency">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="section-title"><span class="dot"></span>Convert</div>
+          <div class="field">
+            <label class="field-label">Amount</label>
+            <input class="input" id="curAmount" type="number" value="1000">
+          </div>
+          <div class="field-row">
+            <div>
+              <label class="field-label">From</label>
+              <select class="input" id="curFrom"></select>
+            </div>
+            <div>
+              <label class="field-label">To</label>
+              <select class="input" id="curTo"></select>
+            </div>
+          </div>
+          <div class="currency-swap"><button id="curSwap" title="Swap">⇅</button></div>
+          <div class="result-card">
+            <div class="result-label">Converted Amount</div>
+            <div class="result-value" id="curResult">—</div>
+            <div class="formula-note" id="curRateNote"></div>
+          </div>
+          <div style="margin-top:14px;">
+            <label class="field-label">Favorites</label>
+            <div id="curFavorites"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="section-title"><span class="dot"></span>Editable Offline Rates (per 1 USD)</div>
+          <div class="table-wrap" style="max-height:360px;">
+            <table class="amort" id="curRatesTable"></table>
+          </div>
+          <div class="page-sub" style="margin-top:10px;">Offline fallback mode — edit rates above; conversions use them instantly, no network required.</div>
+          <div class="section-title" style="margin-top:18px;"><span class="dot"></span>Recent Conversions</div>
+          <div class="history-list" id="curRecent"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- HISTORY ---------- -->
+    <section class="panel" id="panel-history">
+      <div class="card">
+        <div class="section-title"><span class="dot"></span>All History</div>
+        <div class="field-row" style="margin-bottom:14px;">
+          <input class="input" id="histSearch" placeholder="Search history…">
+          <select class="input" id="histFilter" style="max-width:180px;">
+            <option value="all">All categories</option>
+            <option value="standard">Standard</option>
+            <option value="scientific">Scientific</option>
+            <option value="financial">Financial</option>
+            <option value="health">Health</option>
+            <option value="unit">Unit Conversion</option>
+            <option value="currency">Currency</option>
+          </select>
+          <button class="btn ghost sm" id="histExport">Export</button>
+          <button class="btn ghost sm" id="histClear">Clear All</button>
+        </div>
+        <div id="histList"></div>
+      </div>
+    </section>
+
+    <!-- ---------- SETTINGS ---------- -->
+    <section class="panel" id="panel-settings">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="section-title"><span class="dot"></span>Appearance</div>
+          <div class="settings-row"><span>Dark Mode</span><label class="switch"><input type="checkbox" id="darkModeToggle"><span class="slider-tg"></span></label></div>
+          <div class="settings-row"><span>Automatic (system) theme</span><label class="switch"><input type="checkbox" id="autoThemeToggle"><span class="slider-tg"></span></label></div>
+          <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
+            <span>Accent Color</span>
+            <div class="color-row" id="accentColors"></div>
+          </div>
+          <div class="settings-row"><span>Animations</span><label class="switch"><input type="checkbox" id="animToggle" checked><span class="slider-tg"></span></label></div>
+        </div>
+        <div class="card">
+          <div class="section-title"><span class="dot"></span>Calculation</div>
+          <div class="settings-row"><span>Decimal Precision</span>
+            <select class="input" id="precisionSel" style="width:100px;">
+              <option value="2">2</option><option value="4" selected>4</option><option value="6">6</option><option value="8">8</option>
+            </select>
+          </div>
+          <div class="settings-row"><span>Thousands Separator</span><label class="switch"><input type="checkbox" id="thousandsToggle" checked><span class="slider-tg"></span></label></div>
+          <div class="settings-row"><span>Angle Unit (default)</span>
+            <select class="input" id="angleDefaultSel" style="width:100px;">
+              <option value="deg">Deg</option><option value="rad">Rad</option>
+            </select>
+          </div>
+          <div class="section-title" style="margin-top:18px;"><span class="dot"></span>Keyboard Shortcuts</div>
+          <div class="page-sub">Enter = Equals · Esc = Clear · Backspace = Delete · M+/M-/MR/MC via buttons</div>
+          <div class="settings-row"><span>Enable keyboard shortcuts</span><label class="switch"><input type="checkbox" id="kbToggle" checked><span class="slider-tg"></span></label></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+<div id="toast"></div>
+
+<script>
+/* ================================================================
+   STORAGE MANAGER
+   ================================================================ */
+const StorageManager = (() => {
+  const KEY = 'calculusSuiteData_v1';
+  function load(){
+    try{ return JSON.parse(localStorage.getItem(KEY)) || {}; }catch(e){ return {}; }
+  }
+  let data = load();
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){} }
+  return {
+    get(k, def){ return (k in data) ? data[k] : def; },
+    set(k, v){ data[k] = v; save(); },
+    all(){ return data; }
+  };
+})();
+
+/* ================================================================
+   TOAST
+   ================================================================ */
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ================================================================
+   THEME MANAGER
+   ================================================================ */
+const ThemeManager = (() => {
+  const accents = ['#6C63FF','#FF6584','#00C2A8','#FF9F43','#4E9DFF','#B968FF','#22C55E','#FF4D6D'];
+  function apply(){
+    const dark = StorageManager.get('dark', false);
+    const auto = StorageManager.get('autoTheme', false);
+    let isDark = dark;
+    if(auto){ isDark = window.matchMedia('(prefers-color-scheme: dark)').matches; }
+    document.body.setAttribute('data-theme', isDark ? 'dark':'light');
+    document.getElementById('darkModeToggle').checked = isDark;
+    document.getElementById('autoThemeToggle').checked = auto;
+    const accent = StorageManager.get('accent', accents[0]);
+    document.documentElement.style.setProperty('--accent', accent);
+    document.documentElement.style.setProperty('--accent-2', shift(accent));
+  }
+  function shift(hex){
+    // simple lighten for secondary accent
+    const c = hex.replace('#','');
+    const num = parseInt(c,16);
+    let r=(num>>16)+40, g=((num>>8)&0xff)+30, b=(num&0xff)+60;
+    r=Math.min(255,r); g=Math.min(255,g); b=Math.min(255,b);
+    return '#' + [r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
+  }
+  function init(){
+    document.getElementById('darkModeToggle').addEventListener('change', e=>{
+      StorageManager.set('dark', e.target.checked);
+      StorageManager.set('autoTheme', false);
+      apply();
+    });
+    document.getElementById('autoThemeToggle').addEventListener('change', e=>{
+      StorageManager.set('autoTheme', e.target.checked);
+      apply();
+    });
+    const wrap = document.getElementById('accentColors');
+    accents.forEach(c=>{
+      const d = document.createElement('div');
+      d.className='color-dot'; d.style.background=c;
+      d.addEventListener('click', ()=>{ StorageManager.set('accent', c); apply(); highlightAccent(); });
+      d.dataset.c = c;
+      wrap.appendChild(d);
+    });
+    highlightAccent();
+    document.getElementById('themeBtn').addEventListener('click', ()=>{
+      const cur = StorageManager.get('dark', false);
+      StorageManager.set('dark', !cur);
+      StorageManager.set('autoTheme', false);
+      apply();
+    });
+    apply();
+  }
+  function highlightAccent(){
+    const accent = StorageManager.get('accent', accents[0]);
+    document.querySelectorAll('.color-dot').forEach(d=> d.classList.toggle('sel', d.dataset.c === accent));
+  }
+  return { init, apply };
+})();
+
+/* ================================================================
+   HISTORY MANAGER
+   ================================================================ */
+const HistoryManager = (() => {
+  let items = StorageManager.get('history', []);
+  function add(category, expr, result){
+    const entry = { id: Date.now()+Math.random(), category, expr, result: String(result), ts: Date.now(), fav:false };
+    items.unshift(entry);
+    if(items.length > 500) items.pop();
+    StorageManager.set('history', items);
+    renderAllHistoryViews();
+    return entry;
+  }
+  function remove(id){ items = items.filter(i=>i.id!==id); StorageManager.set('history', items); renderAllHistoryViews(); }
+  function clearAll(){ items = []; StorageManager.set('history', items); renderAllHistoryViews(); }
+  function toggleFav(id){ const it = items.find(i=>i.id===id); if(it){ it.fav = !it.fav; StorageManager.set('history', items); renderAllHistoryViews(); } }
+  function getAll(){ return items; }
+  function byCategory(cat, limit){ const r = items.filter(i=>i.category===cat); return limit ? r.slice(0,limit) : r; }
+  return { add, remove, clearAll, toggleFav, getAll, byCategory };
+})();
+
+function renderAllHistoryViews(){
+  renderMiniHistory('stdHistory','standard');
+  renderMiniHistory('sciHistory','scientific');
+  renderFullHistory();
+  renderCurrencyRecent();
+}
+function renderMiniHistory(elId, cat){
+  const el = document.getElementById(elId); if(!el) return;
+  const list = HistoryManager.byCategory(cat, 25);
+  el.innerHTML = list.length? '' : '<div class="empty-state">No calculations yet</div>';
+  list.forEach(it=>{
+    const d = document.createElement('div'); d.className='history-item';
+    d.innerHTML = `<span class="ex">${escapeHtml(it.expr)}</span><span>= ${escapeHtml(it.result)}</span>`;
+    d.addEventListener('click', ()=>{
+      if(cat==='standard'){ StdCalc.setValue(it.result); }
+      if(cat==='scientific'){ SciCalc.setValue(it.result); }
+    });
+    el.appendChild(d);
+  });
+}
+function renderFullHistory(){
+  const el = document.getElementById('histList'); if(!el) return;
+  const filterCat = document.getElementById('histFilter').value;
+  const q = document.getElementById('histSearch').value.toLowerCase();
+  let list = HistoryManager.getAll();
+  if(filterCat !== 'all') list = list.filter(i=>i.category===filterCat);
+  if(q) list = list.filter(i=> i.expr.toLowerCase().includes(q) || String(i.result).toLowerCase().includes(q));
+  el.innerHTML = list.length ? '' : '<div class="empty-state">No history entries match.</div>';
+  list.slice(0,300).forEach(it=>{
+    const row = document.createElement('div'); row.className='history-item'; row.style.cursor='default';
+    const date = new Date(it.ts).toLocaleString();
+    row.innerHTML = `<span><b style="text-transform:capitalize;color:var(--accent);">${it.category}</b> &nbsp; <span class="ex">${escapeHtml(it.expr)}</span> = ${escapeHtml(it.result)}<br><span class="ex" style="font-size:10.5px;">${date}</span></span>
+    <span style="display:flex;gap:6px;align-items:flex-start;">
+      <button class="btn ghost sm favBtn" style="padding:4px 8px;">${it.fav?'★':'☆'}</button>
+      <button class="btn ghost sm delBtn" style="padding:4px 8px;">✕</button>
+    </span>`;
+    row.querySelector('.favBtn').addEventListener('click', ()=> HistoryManager.toggleFav(it.id));
+    row.querySelector('.delBtn').addEventListener('click', ()=> HistoryManager.remove(it.id));
+    el.appendChild(row);
+  });
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ================================================================
+   EXPRESSION PARSER (shunting-yard) — CALCULATOR ENGINE / SCIENTIFIC ENGINE
+   ================================================================ */
+const CalcEngine = (() => {
+  const FUNCS = {
+    sin:(x,deg)=>Math.sin(deg?x*Math.PI/180:x),
+    cos:(x,deg)=>Math.cos(deg?x*Math.PI/180:x),
+    tan:(x,deg)=>Math.tan(deg?x*Math.PI/180:x),
+    asin:(x,deg)=>{ const r=Math.asin(x); return deg? r*180/Math.PI : r; },
+    acos:(x,deg)=>{ const r=Math.acos(x); return deg? r*180/Math.PI : r; },
+    atan:(x,deg)=>{ const r=Math.atan(x); return deg? r*180/Math.PI : r; },
+    sinh:Math.sinh, cosh:Math.cosh, tanh:Math.tanh,
+    log:Math.log10, ln:Math.log, exp:Math.exp,
+    sqrt:Math.sqrt, cbrt:Math.cbrt, abs:Math.abs,
+    fact:(x)=>{ x=Math.round(x); if(x<0) return NaN; let r=1; for(let i=2;i<=x;i++) r*=i; return r; },
+    rand:()=>Math.random()
+  };
+  const CONSTS = { pi: Math.PI, e: Math.E };
+
+  function tokenize(expr){
+    expr = expr.replace(/π/g,'pi').replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-').replace(/\s+/g,'');
+    const tokens = []; let i=0;
+    const funcNames = Object.keys(FUNCS).sort((a,b)=>b.length-a.length);
+    while(i<expr.length){
+      const c = expr[i];
+      if(/[0-9.]/.test(c)){
+        let j=i; while(j<expr.length && /[0-9.]/.test(expr[j])) j++;
+        tokens.push({t:'num', v:parseFloat(expr.slice(i,j))}); i=j; continue;
+      }
+      if(/[a-zA-Z_]/.test(c)){
+        let matched=false;
+        for(const fn of funcNames){ if(expr.startsWith(fn,i)){ tokens.push({t:'func', v:fn}); i+=fn.length; matched=true; break; } }
+        if(!matched){
+          if(expr.startsWith('pi',i)){ tokens.push({t:'num', v:CONSTS.pi}); i+=2; continue; }
+          if(expr[i]==='e'){ tokens.push({t:'num', v:CONSTS.e}); i+=1; continue; }
+          throw new Error('Unknown token');
+        }
+        continue;
+      }
+      if(c==='%'){ tokens.push({t:'op', v:'%'}); i++; continue; }
+      if(c==='!'){ tokens.push({t:'postfix', v:'!'}); i++; continue; }
+      if('+-*/^'.includes(c)){ tokens.push({t:'op', v:c}); i++; continue; }
+      if(c==='('){ tokens.push({t:'lparen'}); i++; continue; }
+      if(c===')'){ tokens.push({t:'rparen'}); i++; continue; }
+      if(c===','){ tokens.push({t:'comma'}); i++; continue; }
+      throw new Error('Invalid character: '+c);
+    }
+    return tokens;
+  }
+
+  function toRPN(tokens){
+    const out=[], ops=[];
+    const prec = {'+':2,'-':2,'*':3,'/':3,'%':3,'^':4};
+    const rightAssoc = {'^':true};
+    let prev=null;
+    for(let idx=0; idx<tokens.length; idx++){
+      const tok = tokens[idx];
+      if(tok.t==='num'){ out.push(tok); }
+      else if(tok.t==='func'){ ops.push(tok); }
+      else if(tok.t==='postfix'){ out.push(tok); }
+      else if(tok.t==='op'){
+        // unary minus
+        if(tok.v==='-' && (prev===null || prev.t==='op' || prev.t==='lparen' || prev.t==='comma')){
+          out.push({t:'num', v:0}); ops.push({t:'op', v:'-', unary:false});
+        } else {
+          while(ops.length){
+            const top = ops[ops.length-1];
+            if(top.t==='op' && ((rightAssoc[tok.v]? prec[top.v] > prec[tok.v] : prec[top.v] >= prec[tok.v]))){ out.push(ops.pop()); }
+            else break;
+          }
+          ops.push(tok);
+        }
+      }
+      else if(tok.t==='lparen'){ ops.push(tok); }
+      else if(tok.t==='rparen'){
+        while(ops.length && ops[ops.length-1].t!=='lparen'){ out.push(ops.pop()); }
+        ops.pop();
+        if(ops.length && ops[ops.length-1].t==='func'){ out.push(ops.pop()); }
+      }
+      else if(tok.t==='comma'){
+        while(ops.length && ops[ops.length-1].t!=='lparen'){ out.push(ops.pop()); }
+      }
+      prev = tok;
+    }
+    while(ops.length) out.push(ops.pop());
+    return out;
+  }
+
+  function evalRPN(rpn, degMode){
+    const st = [];
+    for(const tok of rpn){
+      if(tok.t==='num') st.push(tok.v);
+      else if(tok.t==='postfix'){ const a=st.pop(); st.push(FUNCS.fact(a)); }
+      else if(tok.t==='op'){
+        const b=st.pop(), a=st.pop();
+        switch(tok.v){
+          case '+': st.push(a+b); break;
+          case '-': st.push(a-b); break;
+          case '*': st.push(a*b); break;
+          case '/': st.push(a/b); break;
+          case '^': st.push(Math.pow(a,b)); break;
+          case '%': st.push(a % b); break;
+        }
+      }
+      else if(tok.t==='func'){
+        const a = st.pop();
+        if(['sin','cos','tan','asin','acos','atan'].includes(tok.v)) st.push(FUNCS[tok.v](a, degMode));
+        else st.push(FUNCS[tok.v](a));
+      }
+    }
+    return st.pop();
+  }
+
+  function evaluate(expr, degMode){
+    if(!expr || !expr.trim()) return 0;
+    const tokens = tokenize(expr);
+    const rpn = toRPN(tokens);
+    const result = evalRPN(rpn, degMode);
+    if(typeof result !== 'number' || !isFinite(result)) throw new Error('Math error');
+    return result;
+  }
+  return { evaluate };
+})();
+
+function formatNumber(n){
+  if(typeof n !== 'number' || isNaN(n)) return 'Error';
+  const precision = parseInt(document.getElementById('precisionSel')?.value || 4);
+  const thousands = document.getElementById('thousandsToggle')?.checked ?? true;
+  let rounded = Math.abs(n) < 1e15 && Math.abs(n) > 1e-9 || n===0 ? parseFloat(n.toFixed(precision)) : n;
+  if(Math.abs(rounded) >= 1e9 || (Math.abs(rounded) < 1e-6 && rounded !== 0)) return rounded.toExponential(4);
+  let s = rounded.toString();
+  if(thousands){
+    const parts = s.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    s = parts.join('.');
+  }
+  return s;
+}
+
+/* ================================================================
+   STANDARD CALCULATOR
+   ================================================================ */
+const StdCalc = (() => {
+  let expr = ''; let memory = 0; let lastResult = null;
+  const exprEl = ()=>document.getElementById('stdExpr');
+  const resEl = ()=>document.getElementById('stdResult');
+  const memEl = ()=>document.getElementById('stdMemTag');
+
+  const buttons = [
+    {l:'MC',cls:'fn',act:()=>{ memory=0; updateMem(); }},
+    {l:'MR',cls:'fn',act:()=>{ append(String(memory)); }},
+    {l:'M+',cls:'fn',act:()=>{ memory += (lastResult ?? Number(currentVal())); updateMem(); }},
+    {l:'M-',cls:'fn',act:()=>{ memory -= (lastResult ?? Number(currentVal())); updateMem(); }},
+    {l:'MS',cls:'fn',act:()=>{ memory = (lastResult ?? Number(currentVal())); updateMem(); }},
+
+    {l:'AC',cls:'fn',act:()=>clearAll()},
+    {l:'⌫',cls:'fn',act:()=>backspace()},
+    {l:'%',cls:'op',act:()=>append('%')},
+    {l:'(',cls:'op',act:()=>append('(')},
+    {l:')',cls:'op',act:()=>append(')')},
+
+    {l:'7',act:()=>append('7')}, {l:'8',act:()=>append('8')}, {l:'9',act:()=>append('9')}, {l:'÷',cls:'op',act:()=>append('/')}, {l:'C',cls:'fn',act:()=>clearAll()},
+    {l:'4',act:()=>append('4')}, {l:'5',act:()=>append('5')}, {l:'6',act:()=>append('6')}, {l:'×',cls:'op',act:()=>append('*')}, {l:'√',cls:'op',act:()=>append('sqrt(')},
+    {l:'1',act:()=>append('1')}, {l:'2',act:()=>append('2')}, {l:'3',act:()=>append('3')}, {l:'-',cls:'op',act:()=>append('-')}, {l:'copy',cls:'fn',act:()=>copyResult(),ic:true},
+    {l:'0',cls:'wide',act:()=>append('0')}, {l:'.',act:()=>append('.')}, {l:'+',cls:'op',act:()=>append('+')}, {l:'=',cls:'eq',act:()=>calculate()},
+  ];
+
+  function currentVal(){ return exprEl().textContent==='0'? '0' : exprEl().textContent; }
+  function updateMem(){ memEl().textContent = memory !== 0 ? 'M = '+formatNumber(memory) : '\u00A0'; }
+  function render(){ exprEl().textContent = expr || '0'; }
+  function append(s){ expr += s; render(); }
+  function backspace(){ expr = expr.slice(0,-1); render(); }
+  function clearAll(){ expr=''; lastResult=null; render(); resEl().textContent='0'; }
+  function setValue(v){ expr = String(v); render(); }
+  function copyResult(){
+    const val = resEl().textContent;
+    navigator.clipboard?.writeText(val).then(()=> toast('Copied '+val)).catch(()=>toast('Copy failed'));
+  }
+  function calculate(){
+    try{
+      const r = CalcEngine.evaluate(expr, true);
+      resEl().textContent = formatNumber(r);
+      HistoryManager.add('standard', expr || '0', formatNumber(r));
+      lastResult = r; expr = String(r);
+    }catch(e){ resEl().textContent = 'Error'; }
+  }
+  function liveEval(){
+    if(!expr){ resEl().textContent='0'; return; }
+    try{ const r = CalcEngine.evaluate(expr, true); resEl().textContent = formatNumber(r); }
+    catch(e){ /* keep last */ }
+  }
+
+  function build(){
+    const wrap = document.getElementById('stdButtons'); wrap.innerHTML='';
+    buttons.forEach(b=>{
+      const btn = document.createElement('button');
+      btn.className = 'calc-btn ' + (b.cls||'');
+      btn.innerHTML = b.ic ? '⧉' : b.l;
+      btn.addEventListener('click', (e)=>{ rippleEffect(e,btn); b.act(); liveEval(); });
+      wrap.appendChild(btn);
+    });
+    updateMem();
+  }
+  function handleKey(e){
+    if(!document.getElementById('kbToggle').checked) return;
+    if(!document.getElementById('panel-standard').classList.contains('active')) return;
+    if(/[0-9.+\-*/%()]/.test(e.key)){ append(e.key); liveEval(); }
+    else if(e.key==='Enter'){ calculate(); }
+    else if(e.key==='Escape'){ clearAll(); }
+    else if(e.key==='Backspace'){ backspace(); liveEval(); }
+  }
+  return { build, handleKey, setValue };
+})();
+
+/* ================================================================
+   SCIENTIFIC CALCULATOR
+   ================================================================ */
+const SciCalc = (() => {
+  let expr=''; let degMode=true; let lastResult=null;
+  const exprEl = ()=>document.getElementById('sciExpr');
+  const resEl = ()=>document.getElementById('sciResult');
+
+  const buttons = [
+    {l:'sin',cls:'fn',act:()=>append('sin(')}, {l:'cos',cls:'fn',act:()=>append('cos(')}, {l:'tan',cls:'fn',act:()=>append('tan(')},
+    {l:'asin',cls:'fn',act:()=>append('asin(')}, {l:'acos',cls:'fn',act:()=>append('acos(')}, {l:'atan',cls:'fn',act:()=>append('atan(')},
+
+    {l:'sinh',cls:'fn',act:()=>append('sinh(')}, {l:'cosh',cls:'fn',act:()=>append('cosh(')}, {l:'tanh',cls:'fn',act:()=>append('tanh(')},
+    {l:'log',cls:'fn',act:()=>append('log(')}, {l:'ln',cls:'fn',act:()=>append('ln(')}, {l:'exp',cls:'fn',act:()=>append('exp(')},
+
+    {l:'π',cls:'fn',act:()=>append('pi')}, {l:'e',cls:'fn',act:()=>append('e')}, {l:'x²',cls:'fn',act:()=>append('^2')},
+    {l:'x^y',cls:'fn',act:()=>append('^')}, {l:'√',cls:'fn',act:()=>append('sqrt(')}, {l:'∛',cls:'fn',act:()=>append('cbrt(')},
+
+    {l:'n!',cls:'fn',act:()=>append('!')}, {l:'|x|',cls:'fn',act:()=>append('abs(')}, {l:'mod',cls:'fn',act:()=>append('%')},
+    {l:'rand',cls:'fn',act:()=>append('rand()')}, {l:'(',cls:'op',act:()=>append('(')}, {l:')',cls:'op',act:()=>append(')')},
+
+    {l:'AC',cls:'fn',act:()=>clearAll()}, {l:'⌫',cls:'fn',act:()=>backspace()}, {l:'7',act:()=>append('7')}, {l:'8',act:()=>append('8')}, {l:'9',act:()=>append('9')}, {l:'÷',cls:'op',act:()=>append('/')},
+    {l:'copy',cls:'fn',ic:true,act:()=>copyResult()}, {l:'ANS',cls:'fn',act:()=>append(lastResult!==null?String(lastResult):'0')}, {l:'4',act:()=>append('4')}, {l:'5',act:()=>append('5')}, {l:'6',act:()=>append('6')}, {l:'×',cls:'op',act:()=>append('*')},
+    {l:'EXP',cls:'fn',act:()=>append('e')}, {l:'%',cls:'fn',act:()=>append('%')}, {l:'1',act:()=>append('1')}, {l:'2',act:()=>append('2')}, {l:'3',act:()=>append('3')}, {l:'-',cls:'op',act:()=>append('-')},
+    {l:'0',act:()=>append('0')}, {l:'.',act:()=>append('.')}, {l:',',act:()=>append(',')}, {l:'0',cls:'wide',act:()=>append('0')}, {l:'+',cls:'op',act:()=>append('+')}, {l:'=',cls:'eq',act:()=>calculate()},
+  ];
+
+  function render(){ exprEl().textContent = expr || '0'; }
+  function append(s){ expr += s; render(); liveEval(); }
+  function backspace(){ expr = expr.slice(0,-1); render(); liveEval(); }
+  function clearAll(){ expr=''; render(); resEl().textContent='0'; }
+  function setValue(v){ expr = String(v); render(); liveEval(); }
+  function copyResult(){ const v = resEl().textContent; navigator.clipboard?.writeText(v).then(()=>toast('Copied '+v)); }
+  function calculate(){
+    try{
+      const r = CalcEngine.evaluate(expr, degMode);
+      resEl().textContent = formatNumber(r);
+      HistoryManager.add('scientific', expr||'0', formatNumber(r));
+      lastResult = r; expr = String(r);
+    }catch(e){ resEl().textContent='Error'; }
+  }
+  function liveEval(){
+    if(!expr){ resEl().textContent='0'; return; }
+    try{ const r = CalcEngine.evaluate(expr, degMode); resEl().textContent = formatNumber(r); }catch(e){}
+  }
+  function build(){
+    const wrap = document.getElementById('sciButtons'); wrap.innerHTML='';
+    buttons.forEach(b=>{
+      const btn = document.createElement('button');
+      btn.className = 'calc-btn ' + (b.cls||'') + (b.l.length>3?' fn':'');
+      btn.innerHTML = b.ic ? '⧉' : b.l;
+      btn.addEventListener('click',(e)=>{ rippleEffect(e,btn); b.act(); });
+      wrap.appendChild(btn);
+    });
+    document.getElementById('degBtn').addEventListener('click', ()=>{ degMode=true; document.getElementById('degBtn').classList.add('active'); document.getElementById('radBtn').classList.remove('active'); liveEval(); });
+    document.getElementById('radBtn').addEventListener('click', ()=>{ degMode=false; document.getElementById('radBtn').classList.add('active'); document.getElementById('degBtn').classList.remove('active'); liveEval(); });
+  }
+  function handleKey(e){
+    if(!document.getElementById('kbToggle').checked) return;
+    if(!document.getElementById('panel-scientific').classList.contains('active')) return;
+    if(/[0-9.+\-*/^()]/.test(e.key)){ append(e.key); }
+    else if(e.key==='Enter'){ calculate(); }
+    else if(e.key==='Escape'){ clearAll(); }
+    else if(e.key==='Backspace'){ backspace(); }
+  }
+  return { build, handleKey, setValue };
+})();
+
+function rippleEffect(e, btn){
+  if(!document.getElementById('animToggle').checked) return;
+  const r = document.createElement('span'); r.className='ripple';
+  const rect = btn.getBoundingClientRect();
+  r.style.left = (e.clientX-rect.left)+'px'; r.style.top=(e.clientY-rect.top)+'px';
+  r.style.width = r.style.height = Math.max(rect.width,rect.height)+'px';
+  btn.appendChild(r); setTimeout(()=>r.remove(),600);
+}
+
+document.addEventListener('keydown', (e)=>{ StdCalc.handleKey(e); SciCalc.handleKey(e); });
+
+/* ================================================================
+   CHART RENDERER (Canvas)
+   ================================================================ */
+const ChartRenderer = {
+  line(canvas, series, opts={}){
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio||1;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    canvas.width = w*dpr; canvas.height = h*dpr; ctx.scale(dpr,dpr);
+    ctx.clearRect(0,0,w,h);
+    const pad = 30;
+    const allVals = series.flatMap(s=>s.data);
+    const max = Math.max(...allVals, 1), min = Math.min(...allVals,0);
+    const styleAccent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#6C63FF';
+    series.forEach((s,si)=>{
+      ctx.beginPath();
+      s.data.forEach((v,i)=>{
+        const x = pad + (i/(s.data.length-1||1))*(w-pad*1.5);
+        const y = h-pad - ((v-min)/(max-min||1))*(h-pad*1.6);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      });
+      ctx.strokeStyle = s.color || styleAccent; ctx.lineWidth=2.4; ctx.lineJoin='round'; ctx.stroke();
+      // fill under first series
+      if(si===0){
+        ctx.lineTo(pad+(w-pad*1.5), h-pad); ctx.lineTo(pad,h-pad); ctx.closePath();
+        ctx.fillStyle = (s.color||styleAccent)+'22'; ctx.fill();
+      }
+    });
+    // axis
+    ctx.strokeStyle = 'rgba(128,128,128,.25)'; ctx.beginPath();
+    ctx.moveTo(pad,h-pad); ctx.lineTo(w-pad*0.5,h-pad); ctx.stroke();
+  },
+  pie(canvas, slices){
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio||1;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    canvas.width=w*dpr; canvas.height=h*dpr; ctx.scale(dpr,dpr);
+    ctx.clearRect(0,0,w,h);
+    const total = slices.reduce((a,s)=>a+s.value,0) || 1;
+    let start = -Math.PI/2;
+    const cx=w/2, cy=h/2, r=Math.min(w,h)/2 - 10;
+    slices.forEach(s=>{
+      const angle = (s.value/total)*Math.PI*2;
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,start,start+angle); ctx.closePath();
+      ctx.fillStyle = s.color; ctx.fill();
+      start += angle;
+    });
+  }
+};
+
+/* ================================================================
+   NAVIGATION / CATEGORY REGISTRY
+   ================================================================ */
+const ICONS = {
+  dash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>',
+  std:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="11" x2="8" y2="11"/><line x1="12" y1="11" x2="12" y2="11"/><line x1="16" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="8" y2="15"/><line x1="12" y1="15" x2="12" y2="15"/><line x1="16" y1="15" x2="16" y2="15"/></svg>',
+  sci:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3v6l-5 9a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-5-9V3"/><line x1="9" y1="3" x2="15" y2="3"/></svg>',
+  fin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+  health:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>',
+  unit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3l4 4-4 4"/><path d="M3 7h18"/><path d="M7 21l-4-4 4-4"/><path d="M21 17H3"/></svg>',
+  cur:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 9h4a2 2 0 0 1 0 4H9m0-4v8m0-4h5"/></svg>',
+  hist:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 16 14"/></svg>',
+  set:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>'
+};
+
+const NAV = [
+  {id:'dashboard', label:'Dashboard', ic:ICONS.dash},
+  {group:'Calculators'},
+  {id:'standard', label:'Standard', ic:ICONS.std},
+  {id:'scientific', label:'Scientific', ic:ICONS.sci},
+  {id:'financial', label:'Financial', ic:ICONS.fin},
+  {id:'health', label:'Health', ic:ICONS.health},
+  {group:'Converters'},
+  {id:'units', label:'Unit Converter', ic:ICONS.unit},
+  {id:'currency', label:'Currency', ic:ICONS.cur},
+  {group:'System'},
+  {id:'history', label:'History', ic:ICONS.hist},
+  {id:'settings', label:'Settings', ic:ICONS.set},
+];
+
+function buildNav(){
+  const wrap = document.getElementById('navList'); wrap.innerHTML='';
+  let group = null;
+  NAV.forEach(item=>{
+    if(item.group){
+      const g = document.createElement('div'); g.className='nav-group-title'; g.textContent=item.group;
+      wrap.appendChild(g); return;
+    }
+    const el = document.createElement('div'); el.className='nav-item'; el.dataset.id=item.id;
+    el.innerHTML = `<span class="ic">${item.ic}</span><span>${item.label}</span>`;
+    el.addEventListener('click', ()=> navigateTo(item.id));
+    wrap.appendChild(el);
+  });
+}
+function navigateTo(id, sub){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+id)?.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.id===id));
+  const titles = {dashboard:['Dashboard','Everything you need, in one place'],standard:['Standard Calculator','Fast arithmetic with memory & history'],scientific:['Scientific Calculator','Trig, logs, powers & more'],financial:['Financial Calculators','Loans, interest, retirement & more'],health:['Health Calculators','BMI, BMR, calories & wellness metrics'],units:['Unit Converter','Length, weight, speed & more'],currency:['Currency Converter','Offline-capable exchange conversions'],history:['History','Every calculation you have made'],settings:['Settings','Personalize your experience']};
+  document.getElementById('pageTitle').textContent = titles[id][0];
+  document.getElementById('pageSub').textContent = titles[id][1];
+  document.getElementById('sidebar').classList.remove('open');
+  StorageManager.set('lastVisited', id);
+  const recents = StorageManager.get('recents', []);
+  const filtered = recents.filter(r=>r!==id);
+  filtered.unshift(id);
+  StorageManager.set('recents', filtered.slice(0,6));
+  if(id==='financial' && sub) FinancialModule.open(sub);
+  if(id==='health' && sub) HealthModule.open(sub);
+  renderDashboard();
+}
+document.getElementById('hamburgerBtn').addEventListener('click', ()=> document.getElementById('sidebar').classList.toggle('open'));
+
+/* ================================================================
+   DASHBOARD (tiles / search)
+   ================================================================ */
+const ALL_TOOLS = [
+  {id:'standard', name:'Standard', desc:'Arithmetic & memory', cat:'nav'},
+  {id:'scientific', name:'Scientific', desc:'Trig, logs, powers', cat:'nav'},
+  {id:'units', name:'Unit Converter', desc:'16 categories', cat:'nav'},
+  {id:'currency', name:'Currency', desc:'Offline exchange rates', cat:'nav'},
+];
+function toolTileIcon(){ return ICONS.fin; }
+function renderDashboard(){
+  const recentEl = document.getElementById('recentList');
+  const allEl = document.getElementById('allTiles');
+  if(!recentEl) return;
+  const recents = StorageManager.get('recents', []);
+  recentEl.innerHTML = recents.length ? '' : '<div class="search-results-empty">Nothing recent yet — start calculating!</div>';
+  recents.forEach(id=>{
+    const meta = NAV.find(n=>n.id===id); if(!meta) return;
+    recentEl.appendChild(makeTile(meta.label, 'Jump back in', meta.ic, ()=>navigateTo(id)));
+  });
+  allEl.innerHTML='';
+  const list = [
+    ['standard','Standard Calculator','Arithmetic + memory',ICONS.std],
+    ['scientific','Scientific Calculator','Trig / log / powers',ICONS.sci],
+    ...FinancialModule.list().map(f=>[('financial:'+f.id), f.name, 'Financial', ICONS.fin]),
+    ...HealthModule.list().map(f=>[('health:'+f.id), f.name, 'Health', ICONS.health]),
+    ['units','Unit Converter','16 categories',ICONS.unit],
+    ['currency','Currency Converter','Offline rates',ICONS.cur],
+  ];
+  list.forEach(([id,name,desc,ic])=>{
+    allEl.appendChild(makeTile(name, desc, ic, ()=>{
+      if(id.startsWith('financial:')) navigateTo('financial', id.split(':')[1]);
+      else if(id.startsWith('health:')) navigateTo('health', id.split(':')[1]);
+      else navigateTo(id);
+    }));
+  });
+}
+function makeTile(name, desc, ic, onClick){
+  const d = document.createElement('div'); d.className='card tile';
+  d.innerHTML = `<div class="tile-ic">${ic}</div><div class="tile-name">${name}</div><div class="tile-desc">${desc}</div>`;
+  d.addEventListener('click', onClick);
+  return d;
+}
+
+document.getElementById('globalSearch').addEventListener('input', (e)=>{
+  const q = e.target.value.toLowerCase().trim();
+  if(!q){ return; }
+  const list = [
+    ['standard','Standard Calculator'], ['scientific','Scientific Calculator'],
+    ...FinancialModule.list().map(f=>['financial:'+f.id, f.name]),
+    ...HealthModule.list().map(f=>['health:'+f.id, f.name]),
+    ['units','Unit Converter'], ['currency','Currency Converter'], ['history','History'], ['settings','Settings']
+  ];
+  const match = list.find(([id,name])=> name.toLowerCase().includes(q));
+  if(match){
+    navigateTo.__pending = match[0];
+  }
+});
+document.getElementById('globalSearch').addEventListener('keydown', (e)=>{
+  if(e.key==='Enter'){
+    const q = e.target.value.toLowerCase().trim();
+    const list = [
+      ['standard','Standard Calculator'], ['scientific','Scientific Calculator'],
+      ...FinancialModule.list().map(f=>['financial:'+f.id, f.name]),
+      ...HealthModule.list().map(f=>['health:'+f.id, f.name]),
+      ['units','Unit Converter'], ['currency','Currency Converter']
+    ];
+    const match = list.find(([id,name])=> name.toLowerCase().includes(q));
+    if(match){
+      if(match[0].startsWith('financial:')) navigateTo('financial', match[0].split(':')[1]);
+      else if(match[0].startsWith('health:')) navigateTo('health', match[0].split(':')[1]);
+      else navigateTo(match[0]);
+      e.target.value='';
+    }
+  }
+});
+
+/* ================================================================
+   GENERIC FINANCIAL/HEALTH CARD BUILDER HELPERS
+   ================================================================ */
+function fieldHTML(id, label, value, type='number', extra=''){
+  return `<div class="field"><label class="field-label">${label}</label><input class="input" id="${id}" type="${type}" value="${value}" ${extra}></div>`;
+}
+function selectHTML(id, label, options, selected){
+  return `<div class="field"><label class="field-label">${label}</label><select class="input" id="${id}">${options.map(o=>`<option value="${o.v}" ${o.v==selected?'selected':''}>${o.l}</option>`).join('')}</select></div>`;
+}
+function val(id){ return parseFloat(document.getElementById(id).value) || 0; }
+function sval(id){ return document.getElementById(id).value; }
+
+/* ================================================================
+   FINANCIAL MODULE
+   ================================================================ */
+const FinancialModule = (() => {
+  const defs = [
+    {id:'emi', name:'EMI Calculator', build:buildEMI},
+    {id:'loan', name:'Loan Calculator', build:buildLoan},
+    {id:'mortgage', name:'Mortgage Calculator', build:buildMortgage},
+    {id:'compound', name:'Compound Interest', build:buildCompound},
+    {id:'savings', name:'Savings Calculator', build:buildSavings},
+    {id:'invest', name:'Investment Growth', build:buildInvest},
+    {id:'retirement', name:'Retirement Calculator', build:buildRetirement},
+    {id:'simple', name:'Simple Interest', build:buildSimple},
+    {id:'inflation', name:'Inflation Calculator', build:buildInflation},
+    {id:'tax', name:'Tax Calculator', build:buildTax},
+    {id:'margin', name:'Profit Margin', build:buildMargin},
+    {id:'curprofit', name:'Currency Profit', build:buildCurProfit},
+  ];
+  function list(){ return defs; }
+  function renderHub(){
+    const hub = document.getElementById('financialHub'); hub.innerHTML='';
+    defs.forEach(d=> hub.appendChild(makeTile(d.name,'Tap to open',ICONS.fin,()=>open(d.id))));
+  }
+  function open(id){
+    const container = document.getElementById('financialCalcs');
+    container.innerHTML = `<div class="crumb" id="finBack">← All financial calculators</div><div id="finBody"></div>`;
+    document.getElementById('finBack').addEventListener('click', ()=>{ container.innerHTML=''; });
+    const def = defs.find(d=>d.id===id);
+    def.build(document.getElementById('finBody'));
+  }
+
+  function amortTable(principal, rate, months){
+    const r = rate/12/100;
+    const emi = r===0 ? principal/months : principal*r*Math.pow(1+r,months)/(Math.pow(1+r,months)-1);
+    let bal = principal; const rows=[];
+    for(let m=1;m<=months;m++){
+      const interest = bal*r; const princ = emi-interest; bal -= princ;
+      rows.push({m, emi, interest, princ, bal: Math.max(bal,0)});
+    }
+    return {emi, rows};
+  }
+  function renderAmort(container, rows){
+    const wrap = document.createElement('div'); wrap.className='table-wrap';
+    const table = document.createElement('table'); table.className='amort';
+    table.innerHTML = `<thead><tr><th>#</th><th>Payment</th><th>Principal</th><th>Interest</th><th>Balance</th></tr></thead>`;
+    const tbody = document.createElement('tbody');
+    rows.forEach(r=>{
+      tbody.innerHTML += `<tr><td>${r.m}</td><td>${formatNumber(r.emi)}</td><td>${formatNumber(r.princ)}</td><td>${formatNumber(r.interest)}</td><td>${formatNumber(r.bal)}</td></tr>`;
+    });
+    table.appendChild(tbody); wrap.appendChild(table); container.appendChild(wrap);
+  }
+
+  function buildEMI(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>EMI Calculator</div>
+      <div class="grid grid-3">
+        ${fieldHTML('emiP','Loan Amount', 500000)}
+        ${fieldHTML('emiR','Annual Interest Rate (%)', 9.5, 'number','step="0.01"')}
+        ${fieldHTML('emiN','Tenure (months)', 60)}
+      </div>
+      <button class="btn" id="emiCalc">Calculate EMI</button>
+      <div id="emiOut"></div>
+    </div>`;
+    document.getElementById('emiCalc').addEventListener('click', ()=>{
+      const P = val('emiP'), R = val('emiR'), N = val('emiN');
+      const {emi, rows} = amortTable(P,R,N);
+      const totalPay = emi*N, totalInt = totalPay-P;
+      const out = document.getElementById('emiOut');
+      out.innerHTML = `<div class="result-card"><div class="result-label">Monthly EMI</div><div class="result-value">${formatNumber(emi)}</div>
+      <div class="formula-note">EMI = P × r × (1+r)^n / ((1+r)^n − 1)</div></div>
+      <div class="summary-cards">
+        <div class="mini-card"><div class="l">Total Payment</div><div class="v">${formatNumber(totalPay)}</div></div>
+        <div class="mini-card"><div class="l">Total Interest</div><div class="v">${formatNumber(totalInt)}</div></div>
+        <div class="mini-card"><div class="l">Principal</div><div class="v">${formatNumber(P)}</div></div>
+      </div>
+      <canvas class="chart" id="emiChart"></canvas>`;
+      requestAnimationFrame(()=> ChartRenderer.line(document.getElementById('emiChart'), [{data: rows.map(r=>r.bal), color:'#6C63FF'}]));
+      renderAmort(out, rows);
+      HistoryManager.add('financial', `EMI(P=${P},R=${R}%,N=${N}mo)`, formatNumber(emi));
+    });
+  }
+  function buildLoan(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>Loan Calculator</div>
+      <div class="grid grid-3">
+        ${fieldHTML('loP','Loan Amount', 200000)}
+        ${fieldHTML('loR','Annual Interest Rate (%)', 7.2, 'number','step="0.01"')}
+        ${fieldHTML('loN','Tenure (years)', 5)}
+      </div>
+      <button class="btn" id="loCalc">Calculate</button>
+      <div id="loOut"></div>
+    </div>`;
+    document.getElementById('loCalc').addEventListener('click', ()=>{
+      const P=val('loP'), R=val('loR'), N=val('loN')*12;
+      const {emi, rows} = amortTable(P,R,N);
+      const out = document.getElementById('loOut');
+      out.innerHTML = `<div class="result-card"><div class="result-label">Monthly Payment</div><div class="result-value">${formatNumber(emi)}</div>
+      <div class="formula-note">Standard amortizing loan formula</div></div>
+      <div class="summary-cards"><div class="mini-card"><div class="l">Total Interest</div><div class="v">${formatNumber(emi*N-P)}</div></div>
+      <div class="mini-card"><div class="l">Total Paid</div><div class="v">${formatNumber(emi*N)}</div></div></div>
+      <canvas class="chart" id="loChart"></canvas>`;
+      requestAnimationFrame(()=>ChartRenderer.line(document.getElementById('loChart'),[{data:rows.map(r=>r.bal)}]));
+      renderAmort(out, rows);
+      HistoryManager.add('financial', `Loan(P=${P},R=${R}%,${N}mo)`, formatNumber(emi));
+    });
+  }
+  function buildMortgage(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>Mortgage Calculator</div>
+      <div class="grid grid-3">
+        ${fieldHTML('moPrice','Home Price', 350000)}
+        ${fieldHTML('moDown','Down Payment', 70000)}
+        ${fieldHTML('moR','Annual Interest Rate (%)', 6.5,'number','step="0.01"')}
+      </div>
+      <div class="grid grid-3">
+        ${fieldHTML('moN','Term (years)', 30)}
+        ${fieldHTML('moTax','Annual Property Tax', 3200)}
+        ${fieldHTML('moIns','Annual Insurance', 1200)}
+      </div>
+      <button class="btn" id="moCalc">Calculate Mortgage</button>
+      <div id="moOut"></div>
+    </div>`;
+    document.getElementById('moCalc').addEventListener('click', ()=>{
+      const price=val('moPrice'), down=val('moDown'), R=val('moR'), N=val('moN')*12, tax=val('moTax'), ins=val('moIns');
+      const P = price-down;
+      const {emi, rows} = amortTable(P,R,N);
+      const monthlyTax = tax/12, monthlyIns = ins/12;
+      const totalMonthly = emi+monthlyTax+monthlyIns;
+      const out = document.getElementById('moOut');
+      out.innerHTML = `<div class="result-card"><div class="result-label">Total Monthly Payment</div><div class="result-value">${formatNumber(totalMonthly)}</div>
+      <div class="formula-note">P&I + Property Tax/12 + Insurance/12</div></div>
+      <div class="summary-cards">
+        <div class="mini-card"><div class="l">Principal & Interest</div><div class="v">${formatNumber(emi)}</div></div>
+        <div class="mini-card"><div class="l">Monthly Tax</div><div class="v">${formatNumber(monthlyTax)}</div></div>
+        <div class="mini-card"><div class="l">Monthly Insurance</div><div class="v">${formatNumber(monthlyIns)}</div></div>
+        <div class="mini-card"><div class="l">Loan Amount</div><div class="v">${formatNumber(P)}</div></div>
+      </div>
+      <canvas class="chart" id="moChart"></canvas>`;
+      requestAnimationFrame(()=>ChartRenderer.line(document.getElementById('moChart'),[{data:rows.map(r=>r.bal)}]));
+      renderAmort(out, rows);
+      HistoryManager.add('financial', `Mortgage(price=${price})`, formatNumber(totalMonthly));
+    });
+  }
+  function buildCompound(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>Compound Interest Calculator</div>
+      <div class="grid grid-3">
+        ${fieldHTML('ciP','Principal', 10000)}
+        ${fieldHTML('ciR','Annual Rate (%)', 8, 'number','step="0.01"')}
+        ${fieldHTML('ciN','Years', 10)}
+      </div>
+      ${selectHTML('ciFreq','Compounding Frequency',[{v:1,l:'Annually'},{v:2,l:'Semi-annually'},{v:4,l:'Quarterly'},{v:12,l:'Monthly'},{v:365,l:'Daily'}],12)}
+      <button class="btn" id="ciCalc">Calculate</button>
+      <div id="ciOut"></div>
+    </div>`;
+    document.getElementById('ciCalc').addEventListener('click', ()=>{
+      const P=val('ciP'), R=val('ciR')/100, N=val('ciN'), n=parseFloat(sval('ciFreq'));
+      const A = P*Math.pow(1+R/n, n*N);
+      const series=[]; for(let y=0;y<=N;y++) series.push(P*Math.pow(1+R/n,n*y));
+      const out=document.getElementById('ciOut');
+      out.innerHTML = `<div class="result-card"><div class="result-label">Future Value</div><div class="result-value">${formatNumber(A)}</div>
+      <div class="formula-note">A = P(1 + r/n)^(n·t)</div></div>
+      <div class="summary-cards"><div class="mini-card"><div class="l">Interest Earned</div><div class="v">${formatNumber(A-P)}</div></div>
+      <div class="mini-card"><div class="l">Principal</div><div class="v">${formatNumber(P)}</div></div></div>
+      <canvas class="chart" id="ciChart"></canvas>`;
+      requestAnimationFrame(()=>ChartRenderer.line(document.getElementById('ciChart'),[{data:series}]));
+      HistoryManager.add('financial', `CompoundInterest(P=${P},R=${R*100}%,N=${N}y)`, formatNumber(A));
+    });
+  }
+  function buildSavings(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>Savings Calculator</div>
+      <div class="grid grid-3">
+        ${fieldHTML('svInit','Initial Amount', 1000)}
+        ${fieldHTML('svMonthly','Monthly Contribution', 200)}
+        ${fieldHTML('svR','Annual Return (%)', 6,'number','step="0.01"')}
+      </div>
+      ${fieldHTML('svYears','Years', 15)}
+      <button class="btn" id="svCalc">Calculate Savings</button>
+      <div id="svOut"></div>
+    </div>`;
+    document.getElementById('svCalc').addEventListener('click', ()=>{
+      const init=val('svInit'), monthly=val('svMonthly'), R=val('svR')/100/12, years=val('svYears'), months=years*12;
+      let bal=init; const series=[bal];
+      for(let m=1;m<=months;m++){ bal = bal*(1+R) + monthly; series.push(bal); }
+      const contributed = init + monthly*months;
+      const out=document.getElementById('svOut');
+      out.innerHTML=`<div class="result-card"><div class="result-label">Final Balance</div><div class="result-value">${formatNumber(bal)}</div>
+      <div class="formula-note">Future value of series with monthly compounding</div></div>
+      <div class="summary-cards"><div class="mini-card"><div class="l">Total Contributed</div><div class="v">${formatNumber(contributed)}</div></div>
+      <div class="mini-card"><div class="l">Growth</div><div class="v">${formatNumber(bal-contributed)}</div></div></div>
+      <canvas class="chart" id="svChart"></canvas>`;
+      requestAnimationFrame(()=>ChartRenderer.line(document.getElementById('svChart'),[{data:series}]));
+      HistoryManager.add('financial', `Savings(init=${init},monthly=${monthly})`, formatNumber(bal));
+    });
+  }
+  function buildInvest(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>Investment Growth Calculator</div>
+      <div class="grid grid-3">
+        ${fieldHTML('ivP','Initial Investment', 5000)}
+        ${fieldHTML('ivR','Expected Annual Return (%)', 10,'number','step="0.01"')}
+        ${fieldHTML('ivN','Years', 20)}
+      </div>
+      <button class="btn" id="ivCalc">Project Growth</button>
+      <div id="ivOut"></div>
+    </div>`;
+    document.getElementById('ivCalc').addEventListener('click', ()=>{
+      const P=val('ivP'), R=val('ivR')/100, N=val('ivN');
+      const series=[]; for(let y=0;y<=N;y++) series.push(P*Math.pow(1+R,y));
+      const A = series[series.length-1];
+      const out=document.getElementById('ivOut');
+      out.innerHTML=`<div class="result-card"><div class="result-label">Projected Value</div><div class="result-value">${formatNumber(A)}</div>
+      <div class="formula-note">A = P(1+r)^t</div></div>
+      <canvas class="chart" id="ivChart"></canvas>`;
+      requestAnimationFrame(()=>ChartRenderer.line(document.getElementById('ivChart'),[{data:series}]));
+      HistoryManager.add('financial', `Investment(P=${P},R=${R*100}%,${N}y)`, formatNumber(A));
+    });
+  }
+  function buildRetirement(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>Retirement Calculator</div>
+      <div class="grid grid-3">
+        ${fieldHTML('reAge','Current Age', 28)}
+        ${fieldHTML('reRetireAge','Retirement Age', 60)}
+        ${fieldHTML('reCurrent','Current Savings', 15000)}
+      </div>
+      <div class="grid grid-3">
+        ${fieldHTML('reMonthly','Monthly Contribution', 500)}
+        ${fieldHTML('reR','Expected Annual Return (%)', 7,'number','step="0.01"')}
+        ${fieldHTML('reNeed','Target Corpus', 1000000)}
+      </div>
+      <button class="btn" id="reCalc">Calculate</button>
+      <div id="reOut"></div>
+    </div>`;
+    document.getElementById('reCalc').addEventListener('click', ()=>{
+      const years = val('reRetireAge')-val('reAge');
+      const months = years*12;
+      const R = val('reR')/100/12;
+      let bal = val('reCurrent'); const series=[bal];
+      for(let m=1;m<=months;m++){ bal = bal*(1+R)+val('reMonthly'); series.push(bal); }
+      const target = val('reNeed');
+      const pct = Math.min(100,(bal/target)*100);
+      const out=document.getElementById('reOut');
+      out.innerHTML=`<div class="result-card"><div class="result-label">Projected Nest Egg at Retirement</div><div class="result-value">${formatNumber(bal)}</div>
+      <div class="formula-note">Future value of contributions + growth over ${years} years</div></div>
+      <div style="margin-top:10px;">Progress toward ${formatNumber(target)} goal
+      <div class="progress"><div style="width:${pct}%"></div></div></div>
+      <canvas class="chart" id="reChart"></canvas>`;
+      requestAnimationFrame(()=>ChartRenderer.line(document.getElementById('reChart'),[{data:series}]));
+      HistoryManager.add('financial', `Retirement(${years}y)`, formatNumber(bal));
+    });
+  }
+  function buildSimple(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>Simple Interest Calculator</div>
+      <div class="grid grid-3">
+        ${fieldHTML('siP','Principal', 10000)}
+        ${fieldHTML('siR','Rate (%)', 5,'number','step="0.01"')}
+        ${fieldHTML('siN','Years', 3)}
+      </div>
+      <button class="btn" id="siCalc">Calculate</button>
+      <div id="siOut"></div>
+    </div>`;
+    document.getElementById('siCalc').addEventListener('click', ()=>{
+      const P=val('siP'), R=val('siR'), N=val('siN');
+      const SI = P*R*N/100; const total = P+SI;
+      document.getElementById('siOut').innerHTML = `<div class="result-card"><div class="result-label">Simple Interest</div><div class="result-value">${formatNumber(SI)}</div>
+      <div class="formula-note">SI = P × R × T / 100</div></div>
+      <div class="summary-cards"><div class="mini-card"><div class="l">Total Amount</div><div class="v">${formatNumber(total)}</div></div></div>`;
+      HistoryManager.add('financial', `SimpleInterest(P=${P},R=${R}%,${N}y)`, formatNumber(SI));
+    });
+  }
+  function buildInflation(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>Inflation Calculator</div>
+      <div class="grid grid-3">
+        ${fieldHTML('inAmt','Current Amount', 10000)}
+        ${fieldHTML('inRate','Avg. Inflation Rate (%)', 6,'number','step="0.01"')}
+        ${fieldHTML('inYears','Years', 10)}
+      </div>
+      <button class="btn" id="inCalc">Calculate Future Cost</button>
+      <div id="inOut"></div>
+    </div>`;
+    document.getElementById('inCalc').addEventListener('click', ()=>{
+      const A=val('inAmt'), R=val('inRate')/100, N=val('inYears');
+      const future = A*Math.pow(1+R,N);
+      const realValueToday = A/Math.pow(1+R,N);
+      document.getElementById('inOut').innerHTML = `<div class="result-card"><div class="result-label">Future Cost (Equivalent)</div><div class="result-value">${formatNumber(future)}</div>
+      <div class="formula-note">FV = PV × (1 + inflation)^t</div></div>
+      <div class="summary-cards"><div class="mini-card"><div class="l">Today's Value of ${formatNumber(A)} in Future</div><div class="v">${formatNumber(realValueToday)}</div></div></div>`;
+      HistoryManager.add('financial', `Inflation(${A},${R*100}%,${N}y)`, formatNumber(future));
+    });
+  }
+  function buildTax(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>Tax Calculator (simple slab model)</div>
+      <div class="grid grid-2">
+        ${fieldHTML('txIncome','Annual Income', 800000)}
+        ${fieldHTML('txDeduction','Deductions', 50000)}
+      </div>
+      <div class="page-sub" style="margin-bottom:10px;">Illustrative slabs: 0–2.5L: 0% · 2.5–5L: 5% · 5–10L: 20% · above 10L: 30%</div>
+      <button class="btn" id="txCalc">Calculate Tax</button>
+      <div id="txOut"></div>
+    </div>`;
+    document.getElementById('txCalc').addEventListener('click', ()=>{
+      const income = Math.max(0, val('txIncome')-val('txDeduction'));
+      const slabs = [[250000,0],[250000,0.05],[500000,0.2],[Infinity,0.3]];
+      let remaining = income, tax=0, floor=0;
+      for(const [width,rate] of slabs){
+        const chunk = Math.min(width, Math.max(0,remaining));
+        tax += chunk*rate; remaining -= chunk;
+        if(remaining<=0) break;
+      }
+      const effective = income>0 ? (tax/income*100):0;
+      document.getElementById('txOut').innerHTML=`<div class="result-card"><div class="result-label">Estimated Tax</div><div class="result-value">${formatNumber(tax)}</div>
+      <div class="formula-note">Progressive slab calculation on taxable income</div></div>
+      <div class="summary-cards"><div class="mini-card"><div class="l">Taxable Income</div><div class="v">${formatNumber(income)}</div></div>
+      <div class="mini-card"><div class="l">Effective Rate</div><div class="v">${effective.toFixed(2)}%</div></div>
+      <div class="mini-card"><div class="l">Net Income</div><div class="v">${formatNumber(income-tax)}</div></div></div>`;
+      HistoryManager.add('financial', `Tax(income=${income})`, formatNumber(tax));
+    });
+  }
+  function buildMargin(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>Profit Margin Calculator</div>
+      <div class="grid grid-2">
+        ${fieldHTML('pmCost','Cost Price', 60)}
+        ${fieldHTML('pmSale','Selling Price', 100)}
+      </div>
+      <button class="btn" id="pmCalc">Calculate Margin</button>
+      <div id="pmOut"></div>
+    </div>`;
+    document.getElementById('pmCalc').addEventListener('click', ()=>{
+      const cost=val('pmCost'), sale=val('pmSale');
+      const profit = sale-cost;
+      const margin = sale!==0 ? (profit/sale)*100 : 0;
+      const markup = cost!==0 ? (profit/cost)*100 : 0;
+      document.getElementById('pmOut').innerHTML=`<div class="result-card"><div class="result-label">Profit Margin</div><div class="result-value">${margin.toFixed(2)}%</div>
+      <div class="formula-note">Margin = (Sale − Cost) / Sale × 100</div></div>
+      <div class="summary-cards"><div class="mini-card"><div class="l">Profit</div><div class="v">${formatNumber(profit)}</div></div>
+      <div class="mini-card"><div class="l">Markup %</div><div class="v">${markup.toFixed(2)}%</div></div></div>`;
+      HistoryManager.add('financial', `Margin(cost=${cost},sale=${sale})`, margin.toFixed(2)+'%');
+    });
+  }
+  function buildCurProfit(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>Currency Profit Calculator</div>
+      <div class="grid grid-3">
+        ${fieldHTML('cpAmount','Amount (foreign currency)', 1000)}
+        ${fieldHTML('cpBuyRate','Buy Rate', 82.5,'number','step="0.0001"')}
+        ${fieldHTML('cpSellRate','Sell Rate', 84.2,'number','step="0.0001"')}
+      </div>
+      <button class="btn" id="cpCalc">Calculate Profit</button>
+      <div id="cpOut"></div>
+    </div>`;
+    document.getElementById('cpCalc').addEventListener('click', ()=>{
+      const amt=val('cpAmount'), buy=val('cpBuyRate'), sell=val('cpSellRate');
+      const invested = amt*buy, returned = amt*sell, profit = returned-invested;
+      const pct = invested!==0 ? (profit/invested*100):0;
+      document.getElementById('cpOut').innerHTML = `<div class="result-card"><div class="result-label">Profit / Loss</div><div class="result-value">${formatNumber(profit)}</div>
+      <div class="formula-note">(Sell Rate − Buy Rate) × Amount</div></div>
+      <div class="summary-cards"><div class="mini-card"><div class="l">Invested</div><div class="v">${formatNumber(invested)}</div></div>
+      <div class="mini-card"><div class="l">Returned</div><div class="v">${formatNumber(returned)}</div></div>
+      <div class="mini-card"><div class="l">Return %</div><div class="v">${pct.toFixed(2)}%</div></div></div>`;
+      HistoryManager.add('financial', `CurProfit(${amt}@${buy}->${sell})`, formatNumber(profit));
+    });
+  }
+
+  return { list, renderHub, open };
+})();
+
+/* ================================================================
+   HEALTH MODULE
+   ================================================================ */
+const HealthModule = (() => {
+  const defs = [
+    {id:'bmi', name:'BMI Calculator', build:buildBMI},
+    {id:'bmr', name:'BMR Calculator', build:buildBMR},
+    {id:'calorie', name:'Daily Calorie Calculator', build:buildCalorie},
+    {id:'bodyfat', name:'Body Fat %', build:buildBodyFat},
+    {id:'idealweight', name:'Ideal Weight', build:buildIdealWeight},
+    {id:'water', name:'Water Intake', build:buildWater},
+    {id:'age', name:'Age Calculator', build:buildAge},
+    {id:'hr', name:'Heart Rate Zones', build:buildHR},
+    {id:'pregnancy', name:'Pregnancy Due Date', build:buildPregnancy},
+    {id:'sleep', name:'Sleep Calculator', build:buildSleep},
+  ];
+  function list(){ return defs; }
+  function renderHub(){
+    const hub = document.getElementById('healthHub'); hub.innerHTML='';
+    defs.forEach(d=> hub.appendChild(makeTile(d.name,'Tap to open',ICONS.health,()=>open(d.id))));
+  }
+  function open(id){
+    const container = document.getElementById('healthCalcs');
+    container.innerHTML = `<div class="crumb" id="heBack">← All health calculators</div><div id="heBody"></div>`;
+    document.getElementById('heBack').addEventListener('click', ()=>{ container.innerHTML=''; });
+    defs.find(d=>d.id===id).build(document.getElementById('heBody'));
+  }
+
+  function buildBMI(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>BMI Calculator</div>
+      <div class="grid grid-2">
+        ${fieldHTML('bmiHeight','Height (cm)', 170)}
+        ${fieldHTML('bmiWeight','Weight (kg)', 68)}
+      </div>
+      <button class="btn" id="bmiCalc">Calculate BMI</button>
+      <div id="bmiOut"></div>
+    </div>`;
+    document.getElementById('bmiCalc').addEventListener('click', ()=>{
+      const h = val('bmiHeight')/100, w = val('bmiWeight');
+      const bmi = w/(h*h);
+      let cat='Normal', cls='good';
+      if(bmi<18.5){cat='Underweight';cls='info';} else if(bmi<25){cat='Normal';cls='good';} else if(bmi<30){cat='Overweight';cls='warn';} else {cat='Obese';cls='bad';}
+      const pct = Math.min(100, (bmi/40)*100);
+      document.getElementById('bmiOut').innerHTML = `<div class="result-card"><div class="result-label">Your BMI</div><div class="result-value">${bmi.toFixed(1)} <span class="badge ${cls}">${cat}</span></div>
+      <div class="formula-note">BMI = weight(kg) / height(m)²</div></div>
+      <div class="progress"><div style="width:${pct}%"></div></div>
+      <div class="page-sub" style="margin-top:10px;">Recommendation: ${cat==='Normal'?'Maintain your current healthy habits.':cat==='Underweight'?'Consider a nutrient-dense diet and consult a professional.':'Consider balanced nutrition and regular activity; consult a professional for a tailored plan.'}</div>`;
+      HistoryManager.add('health', `BMI(h=${val('bmiHeight')}cm,w=${w}kg)`, bmi.toFixed(1));
+    });
+  }
+  function buildBMR(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>BMR Calculator (Mifflin-St Jeor)</div>
+      <div class="grid grid-2">
+        ${selectHTML('bmrGender','Gender',[{v:'m',l:'Male'},{v:'f',l:'Female'}],'m')}
+        ${fieldHTML('bmrAge','Age', 25)}
+      </div>
+      <div class="grid grid-2">
+        ${fieldHTML('bmrHeight','Height (cm)', 175)}
+        ${fieldHTML('bmrWeight','Weight (kg)', 70)}
+      </div>
+      <button class="btn" id="bmrCalc">Calculate BMR</button>
+      <div id="bmrOut"></div>
+    </div>`;
+    document.getElementById('bmrCalc').addEventListener('click', ()=>{
+      const g = sval('bmrGender'), age = val('bmrAge'), h=val('bmrHeight'), w=val('bmrWeight');
+      const bmr = g==='m' ? (10*w + 6.25*h - 5*age + 5) : (10*w + 6.25*h - 5*age - 161);
+      document.getElementById('bmrOut').innerHTML = `<div class="result-card"><div class="result-label">Basal Metabolic Rate</div><div class="result-value">${formatNumber(bmr)} kcal/day</div>
+      <div class="formula-note">Mifflin-St Jeor Equation</div></div>`;
+      HistoryManager.add('health', `BMR(${g},${age}y)`, formatNumber(bmr));
+    });
+  }
+  function buildCalorie(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>Daily Calorie Calculator</div>
+      <div class="grid grid-2">
+        ${selectHTML('calGender','Gender',[{v:'m',l:'Male'},{v:'f',l:'Female'}],'m')}
+        ${fieldHTML('calAge','Age', 25)}
+      </div>
+      <div class="grid grid-2">
+        ${fieldHTML('calHeight','Height (cm)', 175)}
+        ${fieldHTML('calWeight','Weight (kg)', 70)}
+      </div>
+      ${selectHTML('calActivity','Activity Level',[
+        {v:1.2,l:'Sedentary'},{v:1.375,l:'Light exercise'},{v:1.55,l:'Moderate exercise'},{v:1.725,l:'Heavy exercise'},{v:1.9,l:'Athlete'}
+      ],1.55)}
+      <button class="btn" id="calCalc">Calculate Calories</button>
+      <div id="calOut"></div>
+    </div>`;
+    document.getElementById('calCalc').addEventListener('click', ()=>{
+      const g=sval('calGender'), age=val('calAge'), h=val('calHeight'), w=val('calWeight'), act=parseFloat(sval('calActivity'));
+      const bmr = g==='m'?(10*w+6.25*h-5*age+5):(10*w+6.25*h-5*age-161);
+      const tdee = bmr*act;
+      document.getElementById('calOut').innerHTML=`<div class="result-card"><div class="result-label">Maintenance Calories (TDEE)</div><div class="result-value">${formatNumber(tdee)} kcal/day</div>
+      <div class="formula-note">TDEE = BMR × Activity Multiplier</div></div>
+      <div class="summary-cards">
+        <div class="mini-card"><div class="l">Weight Loss</div><div class="v">${formatNumber(tdee-500)} kcal</div></div>
+        <div class="mini-card"><div class="l">Maintain</div><div class="v">${formatNumber(tdee)} kcal</div></div>
+        <div class="mini-card"><div class="l">Weight Gain</div><div class="v">${formatNumber(tdee+500)} kcal</div></div>
+      </div>`;
+      HistoryManager.add('health', `Calories(TDEE)`, formatNumber(tdee));
+    });
+  }
+  function buildBodyFat(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>Body Fat % (US Navy Method)</div>
+      <div class="grid grid-2">
+        ${selectHTML('bfGender','Gender',[{v:'m',l:'Male'},{v:'f',l:'Female'}],'m')}
+        ${fieldHTML('bfHeight','Height (cm)', 175)}
+      </div>
+      <div class="grid grid-3">
+        ${fieldHTML('bfNeck','Neck (cm)', 38)}
+        ${fieldHTML('bfWaist','Waist (cm)', 85)}
+        ${fieldHTML('bfHip','Hip (cm, female only)', 95)}
+      </div>
+      <button class="btn" id="bfCalc">Calculate Body Fat</button>
+      <div id="bfOut"></div>
+    </div>`;
+    document.getElementById('bfCalc').addEventListener('click', ()=>{
+      const g=sval('bfGender'), h=val('bfHeight'), neck=val('bfNeck'), waist=val('bfWaist'), hip=val('bfHip');
+      let bf;
+      if(g==='m') bf = 495/(1.0324 - 0.19077*Math.log10(waist-neck) + 0.15456*Math.log10(h)) - 450;
+      else bf = 495/(1.29579 - 0.35004*Math.log10(waist+hip-neck) + 0.22100*Math.log10(h)) - 450;
+      let cat='Fitness', cls='good';
+      if(g==='m'){ if(bf<6)cat='Essential fat'; else if(bf<14){cat='Athletic';} else if(bf<18){cat='Fitness';} else if(bf<25){cat='Average';cls='warn';} else {cat='Obese';cls='bad';} }
+      else { if(bf<14)cat='Essential fat'; else if(bf<21){cat='Athletic';} else if(bf<25){cat='Fitness';} else if(bf<32){cat='Average';cls='warn';} else {cat='Obese';cls='bad';} }
+      document.getElementById('bfOut').innerHTML = `<div class="result-card"><div class="result-label">Estimated Body Fat</div><div class="result-value">${bf.toFixed(1)}% <span class="badge ${cls}">${cat}</span></div>
+      <div class="formula-note">US Navy circumference method</div></div>`;
+      HistoryManager.add('health', `BodyFat`, bf.toFixed(1)+'%');
+    });
+  }
+  function buildIdealWeight(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>Ideal Weight Calculator (Devine formula)</div>
+      <div class="grid grid-2">
+        ${selectHTML('iwGender','Gender',[{v:'m',l:'Male'},{v:'f',l:'Female'}],'m')}
+        ${fieldHTML('iwHeight','Height (cm)', 175)}
+      </div>
+      <button class="btn" id="iwCalc">Calculate</button>
+      <div id="iwOut"></div>
+    </div>`;
+    document.getElementById('iwCalc').addEventListener('click', ()=>{
+      const g=sval('iwGender'), h=val('iwHeight');
+      const inches = h/2.54;
+      const over60 = Math.max(0, inches-60);
+      const ideal = g==='m' ? 50+2.3*over60 : 45.5+2.3*over60;
+      document.getElementById('iwOut').innerHTML = `<div class="result-card"><div class="result-label">Ideal Body Weight</div><div class="result-value">${formatNumber(ideal)} kg</div>
+      <div class="formula-note">Devine formula</div></div>`;
+      HistoryManager.add('health', `IdealWeight`, formatNumber(ideal)+'kg');
+    });
+  }
+  function buildWater(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>Water Intake Calculator</div>
+      <div class="grid grid-2">
+        ${fieldHTML('waWeight','Weight (kg)', 70)}
+        ${selectHTML('waActivity','Activity Level',[{v:0,l:'Sedentary'},{v:350,l:'Light'},{v:700,l:'Moderate'},{v:1000,l:'Intense'}],350)}
+      </div>
+      <button class="btn" id="waCalc">Calculate Water Intake</button>
+      <div id="waOut"></div>
+    </div>`;
+    document.getElementById('waCalc').addEventListener('click', ()=>{
+      const w=val('waWeight'), extra=parseFloat(sval('waActivity'));
+      const ml = w*33 + extra;
+      document.getElementById('waOut').innerHTML = `<div class="result-card"><div class="result-label">Recommended Daily Water Intake</div><div class="result-value">${(ml/1000).toFixed(2)} L</div>
+      <div class="formula-note">≈33ml per kg body weight + activity adjustment</div></div>`;
+      HistoryManager.add('health', `Water`, (ml/1000).toFixed(2)+'L');
+    });
+  }
+  function buildAge(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>Age Calculator</div>
+      ${fieldHTML('ageDob','Date of Birth', '2008-01-01', 'date')}
+      <button class="btn" id="ageCalc">Calculate Age</button>
+      <div id="ageOut"></div>
+    </div>`;
+    document.getElementById('ageCalc').addEventListener('click', ()=>{
+      const dob = new Date(sval('ageDob'));
+      const now = new Date();
+      let years = now.getFullYear()-dob.getFullYear();
+      let months = now.getMonth()-dob.getMonth();
+      let days = now.getDate()-dob.getDate();
+      if(days<0){ months--; days += new Date(now.getFullYear(), now.getMonth(), 0).getDate(); }
+      if(months<0){ years--; months+=12; }
+      const totalDays = Math.floor((now-dob)/(1000*60*60*24));
+      document.getElementById('ageOut').innerHTML = `<div class="result-card"><div class="result-label">Your Age</div><div class="result-value">${years}y ${months}m ${days}d</div>
+      <div class="formula-note">Calendar difference from date of birth to today</div></div>
+      <div class="summary-cards"><div class="mini-card"><div class="l">Total Days Lived</div><div class="v">${totalDays.toLocaleString()}</div></div></div>`;
+      HistoryManager.add('health', `Age`, `${years}y ${months}m ${days}d`);
+    });
+  }
+  function buildHR(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>Heart Rate Zones Calculator</div>
+      ${fieldHTML('hrAge','Age', 25)}
+      <button class="btn" id="hrCalc">Calculate Zones</button>
+      <div id="hrOut"></div>
+    </div>`;
+    document.getElementById('hrCalc').addEventListener('click', ()=>{
+      const age = val('hrAge');
+      const max = 220-age;
+      const zones = [
+        ['Warm Up',0.5,0.6],['Fat Burn',0.6,0.7],['Aerobic',0.7,0.8],['Anaerobic',0.8,0.9],['Max Effort',0.9,1.0]
+      ];
+      let html = `<div class="result-card"><div class="result-label">Max Heart Rate</div><div class="result-value">${max} bpm</div>
+      <div class="formula-note">220 − age</div></div><div class="summary-cards">`;
+      zones.forEach(([name,lo,hi])=>{
+        html += `<div class="mini-card"><div class="l">${name}</div><div class="v">${Math.round(max*lo)}–${Math.round(max*hi)}</div></div>`;
+      });
+      html += `</div>`;
+      document.getElementById('hrOut').innerHTML = html;
+      HistoryManager.add('health', `HRZones(age=${age})`, max+'bpm max');
+    });
+  }
+  function buildPregnancy(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>Pregnancy Due Date Calculator</div>
+      ${fieldHTML('pgLmp','First Day of Last Period', '2026-01-01', 'date')}
+      <button class="btn" id="pgCalc">Calculate Due Date</button>
+      <div id="pgOut"></div>
+    </div>`;
+    document.getElementById('pgCalc').addEventListener('click', ()=>{
+      const lmp = new Date(sval('pgLmp'));
+      const due = new Date(lmp.getTime() + 280*24*60*60*1000);
+      const now = new Date();
+      const weeks = Math.floor((now-lmp)/(1000*60*60*24*7));
+      document.getElementById('pgOut').innerHTML = `<div class="result-card"><div class="result-label">Estimated Due Date</div><div class="result-value">${due.toDateString()}</div>
+      <div class="formula-note">Naegele's rule: LMP + 280 days</div></div>
+      <div class="summary-cards"><div class="mini-card"><div class="l">Current Gestation</div><div class="v">${Math.max(0,weeks)} weeks</div></div></div>`;
+      HistoryManager.add('health', `Pregnancy`, due.toDateString());
+    });
+  }
+  function buildSleep(root){
+    root.innerHTML = `<div class="card">
+      <div class="section-title"><span class="dot"></span>Sleep Calculator</div>
+      ${selectHTML('slMode','I want to',[{v:'wake',l:'Wake up at a specific time'},{v:'sleep',l:'Fall asleep now'}],'wake')}
+      ${fieldHTML('slTime','Time', '07:00', 'time')}
+      <button class="btn" id="slCalc">Calculate Sleep Cycles</button>
+      <div id="slOut"></div>
+    </div>`;
+    document.getElementById('slCalc').addEventListener('click', ()=>{
+      const mode = sval('slMode'); const [hh,mm] = sval('slTime').split(':').map(Number);
+      const base = new Date(); base.setHours(hh,mm,0,0);
+      const cycle = 90; // minutes
+      let html = `<div class="section-title" style="margin-top:6px;"><span class="dot"></span>Suggested Times (5–6 sleep cycles)</div><div class="summary-cards">`;
+      for(let cycles=6; cycles>=4; cycles--){
+        const mins = cycles*cycle + 15; // + time to fall asleep
+        const t = new Date(base.getTime() + (mode==='wake' ? -mins*60000 : mins*60000));
+        html += `<div class="mini-card"><div class="l">${cycles} cycles (${(mins/60).toFixed(1)}h)</div><div class="v">${t.toTimeString().slice(0,5)}</div></div>`;
+      }
+      html += `</div>`;
+      document.getElementById('slOut').innerHTML = html;
+      HistoryManager.add('health', `Sleep(${mode})`, sval('slTime'));
+    });
+  }
+
+  return { list, renderHub, open };
+})();
+
+/* ================================================================
+   UNIT CONVERSION ENGINE
+   ================================================================ */
+const UnitEngine = (() => {
+  const categories = {
+    Length:{ units:{ m:1, km:1000, cm:0.01, mm:0.001, mi:1609.344, yd:0.9144, ft:0.3048, in:0.0254, nmi:1852 } },
+    Weight:{ units:{ kg:1, g:0.001, mg:0.000001, lb:0.453592, oz:0.0283495, ton:1000, stone:6.35029 } },
+    Area:{ units:{ 'm²':1, 'km²':1e6, 'cm²':0.0001, 'ft²':0.092903, 'in²':0.00064516, acre:4046.86, hectare:10000 } },
+    Volume:{ units:{ l:1, ml:0.001, 'm³':1000, gal:3.78541, qt:0.946353, pt:0.473176, cup:0.24, 'fl_oz':0.0295735 } },
+    Speed:{ units:{ 'm/s':1, 'km/h':0.277778, mph:0.44704, knot:0.514444, 'ft/s':0.3048 } },
+    Temperature:{ special:true },
+    Pressure:{ units:{ pa:1, kpa:1000, bar:100000, atm:101325, psi:6894.76, mmhg:133.322 } },
+    Energy:{ units:{ j:1, kj:1000, cal:4.184, kcal:4184, wh:3600, kwh:3600000, btu:1055.06 } },
+    Time:{ units:{ s:1, min:60, hr:3600, day:86400, week:604800, month:2629800, year:31557600, ms:0.001 } },
+    'Data Storage':{ units:{ byte:1, kb:1024, mb:1048576, gb:1073741824, tb:1099511627776, bit:0.125 } },
+    Power:{ units:{ w:1, kw:1000, mw:1000000, hp:745.7, 'btu/h':0.293071 } },
+    Frequency:{ units:{ hz:1, khz:1000, mhz:1000000, ghz:1000000000, rpm:0.0166667 } },
+    Angle:{ units:{ deg:1, rad:57.29578, grad:0.9, arcmin:0.0166667 } },
+    Force:{ units:{ n:1, kn:1000, lbf:4.44822, dyn:0.00001, kgf:9.80665 } },
+    Density:{ units:{ 'kg/m³':1, 'g/cm³':1000, 'lb/ft³':16.0185, 'g/ml':1000 } },
+    'Fuel Economy':{ units:{ 'km/l':1, 'mpg(US)':0.425144, 'l/100km':'special_fuel', 'mi/l':1.60934 } },
+  };
+  function convert(cat, from, to, value){
+    if(cat==='Temperature'){
+      let c;
+      if(from==='C') c=value; else if(from==='F') c=(value-32)*5/9; else c=value-273.15;
+      if(to==='C') return c; else if(to==='F') return c*9/5+32; else return c+273.15;
+    }
+    if(cat==='Fuel Economy'){
+      // convert via km/l base, handling l/100km specially
+      const toKmL = (u,v)=> u==='l/100km' ? (v===0?0:100/v) : v/categories[cat].units[u];
+      const fromKmL = (u,v)=> u==='l/100km' ? (v===0?0:100/v) : v*categories[cat].units[u];
+      const base = toKmL(from, value);
+      return fromKmL(to, base);
+    }
+    const u = categories[cat].units;
+    const base = value*u[from];
+    return base/u[to];
+  }
+  function unitList(cat){
+    if(cat==='Temperature') return ['C','F','K'];
+    return Object.keys(categories[cat].units);
+  }
+  function catList(){ return Object.keys(categories); }
+  return { convert, unitList, catList };
+})();
+
+let currentUnitCat = 'Length';
+function renderUnitChips(){
+  const wrap = document.getElementById('unitCatChips'); wrap.innerHTML='';
+  UnitEngine.catList().forEach(cat=>{
+    const chip = document.createElement('span'); chip.className='tag-chip'+(cat===currentUnitCat?' on':'');
+    chip.textContent = cat;
+    chip.addEventListener('click', ()=>{ currentUnitCat=cat; renderUnitChips(); renderUnitBody(); });
+    wrap.appendChild(chip);
+  });
+}
+function renderUnitBody(){
+  const body = document.getElementById('unitConverterBody');
+  const units = UnitEngine.unitList(currentUnitCat);
+  body.innerHTML = `
+    <div class="grid grid-3">
+      <div class="field"><label class="field-label">Value</label><input class="input" id="unitValue" type="number" value="1"></div>
+      <div class="field"><label class="field-label">From</label><select class="input" id="unitFrom">${units.map(u=>`<option value="${u}">${u}</option>`).join('')}</select></div>
+      <div class="field"><label class="field-label">To</label><select class="input" id="unitTo">${units.map((u,i)=>`<option value="${u}" ${i===1?'selected':''}>${u}</option>`).join('')}</select></div>
+    </div>
+    <div class="result-card"><div class="result-label">Result</div><div class="result-value" id="unitResult">—</div></div>
+  `;
+  function recalc(){
+    const v = parseFloat(document.getElementById('unitValue').value)||0;
+    const from = sval('unitFrom'), to = sval('unitTo');
+    const r = UnitEngine.convert(currentUnitCat, from, to, v);
+    document.getElementById('unitResult').textContent = formatNumber(r) + ' ' + to;
+    HistoryManager.add('unit', `${v} ${from} → ${to} (${currentUnitCat})`, formatNumber(r));
+  }
+  document.getElementById('unitValue').addEventListener('input', recalc);
+  document.getElementById('unitFrom').addEventListener('change', recalc);
+  document.getElementById('unitTo').addEventListener('change', recalc);
+  recalc();
+}
+
+/* ================================================================
+   CURRENCY CONVERTER (offline editable rates)
+   ================================================================ */
+const DEFAULT_RATES = { USD:1, EUR:0.92, GBP:0.79, INR:83.4, JPY:157.2, AUD:1.51, CAD:1.36, CNY:7.24, CHF:0.89, SGD:1.34, AED:3.67, ZAR:18.2 };
+const CurrencyModule = (() => {
+  let rates = StorageManager.get('curRates', DEFAULT_RATES);
+  let favorites = StorageManager.get('curFavs', ['USD','EUR','INR']);
+  function saveRates(){ StorageManager.set('curRates', rates); }
+  function renderSelectors(){
+    const codes = Object.keys(rates);
+    ['curFrom','curTo'].forEach(id=>{
+      const sel = document.getElementById(id); sel.innerHTML = codes.map(c=>`<option value="${c}">${c}</option>`).join('');
+    });
+    document.getElementById('curTo').value = 'INR' in rates ? 'INR' : codes[1];
+  }
+  function renderRatesTable(){
+    const table = document.getElementById('curRatesTable');
+    table.innerHTML = `<thead><tr><th>Currency</th><th>Rate (per USD)</th><th></th></tr></thead><tbody></tbody>`;
+    const tbody = table.querySelector('tbody');
+    Object.entries(rates).forEach(([code,rate])=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${code}</td><td><input class="input" style="padding:6px 8px;" type="number" step="0.0001" value="${rate}" data-code="${code}"></td>
+      <td><button class="btn ghost sm" data-fav="${code}">${favorites.includes(code)?'★':'☆'}</button></td>`;
+      tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll('input').forEach(inp=>{
+      inp.addEventListener('change', ()=>{ rates[inp.dataset.code] = parseFloat(inp.value)||0; saveRates(); recalc(); });
+    });
+    tbody.querySelectorAll('[data-fav]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const code = btn.dataset.fav;
+        if(favorites.includes(code)) favorites = favorites.filter(f=>f!==code); else favorites.push(code);
+        StorageManager.set('curFavs', favorites);
+        renderRatesTable(); renderFavorites();
+      });
+    });
+  }
+  function renderFavorites(){
+    const wrap = document.getElementById('curFavorites'); wrap.innerHTML='';
+    favorites.forEach(code=>{
+      const chip = document.createElement('span'); chip.className='tag-chip'; chip.textContent = code;
+      chip.addEventListener('click', ()=>{ document.getElementById('curTo').value = code; recalc(); });
+      wrap.appendChild(chip);
+    });
+  }
+  function recalc(){
+    const amt = parseFloat(document.getElementById('curAmount').value)||0;
+    const from = sval('curFrom'), to = sval('curTo');
+    const usd = amt/rates[from];
+    const result = usd*rates[to];
+    document.getElementById('curResult').textContent = formatNumber(result)+' '+to;
+    document.getElementById('curRateNote').textContent = `1 ${from} = ${(rates[to]/rates[from]).toFixed(4)} ${to} (offline rate)`;
+  }
+  function init(){
+    renderSelectors(); renderRatesTable(); renderFavorites();
+    document.getElementById('curFrom').value = 'USD';
+    document.getElementById('curAmount').addEventListener('input', recalc);
+    document.getElementById('curFrom').addEventListener('change', recalc);
+    document.getElementById('curTo').addEventListener('change', recalc);
+    document.getElementById('curSwap').addEventListener('click', ()=>{
+      const f = document.getElementById('curFrom').value, t = document.getElementById('curTo').value;
+      document.getElementById('curFrom').value = t; document.getElementById('curTo').value = f;
+      recalc();
+    });
+    document.querySelector('#panel-currency .card .btn')?.addEventListener?.('click',()=>{});
+    // add explicit convert commit to history on blur/enter of amount
+    document.getElementById('curAmount').addEventListener('change', ()=>{
+      const amt = parseFloat(document.getElementById('curAmount').value)||0;
+      const from = sval('curFrom'), to = sval('curTo');
+      const usd = amt/rates[from]; const result = usd*rates[to];
+      HistoryManager.add('currency', `${amt} ${from} → ${to}`, formatNumber(result));
+      renderCurrencyRecent();
+    });
+    recalc();
+  }
+  return { init, recalc };
+})();
+function renderCurrencyRecent(){
+  const el = document.getElementById('curRecent'); if(!el) return;
+  const list = HistoryManager.byCategory('currency', 15);
+  el.innerHTML = list.length? '' : '<div class="empty-state">No conversions yet</div>';
+  list.forEach(it=>{
+    const d = document.createElement('div'); d.className='history-item'; d.style.cursor='default';
+    d.innerHTML = `<span class="ex">${escapeHtml(it.expr)}</span><span>= ${escapeHtml(it.result)}</span>`;
+    el.appendChild(d);
+  });
+}
+
+/* ================================================================
+   HISTORY PANEL WIRES
+   ================================================================ */
+document.getElementById('histSearch').addEventListener('input', renderFullHistory);
+document.getElementById('histFilter').addEventListener('change', renderFullHistory);
+document.getElementById('histClear').addEventListener('click', ()=>{ if(confirm('Clear all history?')){ HistoryManager.clearAll(); toast('History cleared'); } });
+document.getElementById('histExport').addEventListener('click', ()=>{
+  const data = JSON.stringify(HistoryManager.getAll(), null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='calculation-history.json'; a.click();
+  URL.revokeObjectURL(url);
+  toast('History exported');
+});
+
+/* ================================================================
+   SETTINGS WIRES
+   ================================================================ */
+document.getElementById('precisionSel').addEventListener('change', ()=> StorageManager.set('precision', document.getElementById('precisionSel').value));
+document.getElementById('thousandsToggle').addEventListener('change', e=> StorageManager.set('thousands', e.target.checked));
+document.getElementById('kbToggle').addEventListener('change', e=> StorageManager.set('kb', e.target.checked));
+document.getElementById('animToggle').addEventListener('change', e=> StorageManager.set('anim', e.target.checked));
+document.getElementById('angleDefaultSel').addEventListener('change', e=> StorageManager.set('angleDefault', e.target.value));
+
+function restoreSettings(){
+  const precision = StorageManager.get('precision', '4'); document.getElementById('precisionSel').value = precision;
+  document.getElementById('thousandsToggle').checked = StorageManager.get('thousands', true);
+  document.getElementById('kbToggle').checked = StorageManager.get('kb', true);
+  document.getElementById('animToggle').checked = StorageManager.get('anim', true);
+  document.getElementById('angleDefaultSel').value = StorageManager.get('angleDefault','deg');
+}
+
+/* ================================================================
+   INIT
+   ================================================================ */
+function init(){
+  buildNav();
+  restoreSettings();
+  ThemeManager.init();
+  StdCalc.build();
+  SciCalc.build();
+  FinancialModule.renderHub();
+  HealthModule.renderHub();
+  renderUnitChips(); renderUnitBody();
+  CurrencyModule.init();
+  renderAllHistoryViews();
+  renderDashboard();
+  navigateTo(StorageManager.get('lastVisited','dashboard'));
+}
+init();
+</script>
+</body>
+</html>

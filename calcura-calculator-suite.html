@@ -1,0 +1,1645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Calcura — Premium Calculator Suite</title>
+<style>
+/* ============================================================
+   1. DESIGN TOKENS / THEME
+   ============================================================ */
+:root{
+  --bg:#eef1f6; --bg2:#e4e9f2; --panel:rgba(255,255,255,0.55); --panel-solid:#ffffff;
+  --panel-border:rgba(255,255,255,0.6); --text:#1b2333; --text-dim:#5b647a;
+  --accent:#5865f2; --accent2:#00c2a8; --danger:#ef4b6a; --warn:#f6a723; --good:#1fbf75;
+  --shadow:0 8px 30px rgba(30,41,59,0.10); --shadow-sm:0 2px 10px rgba(30,41,59,0.08);
+  --radius:20px; --radius-sm:12px; --nsh-light:#ffffff; --nsh-dark:#c7cedb;
+  --grad: linear-gradient(135deg,#5865f2,#00c2a8);
+  --speed:.35s;
+}
+[data-theme="dark"]{
+  --bg:#0e1220; --bg2:#141a2c; --panel:rgba(28,33,54,0.55); --panel-solid:#171d30;
+  --panel-border:rgba(255,255,255,0.08); --text:#e7ebf5; --text-dim:#8b93ad;
+  --accent:#7c8bff; --accent2:#2fe0c4; --shadow:0 8px 30px rgba(0,0,0,0.45); --shadow-sm:0 2px 10px rgba(0,0,0,0.35);
+  --nsh-light:#1d2338; --nsh-dark:#0a0d18;
+}
+*,*::before,*::after{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  background:
+    radial-gradient(1200px 700px at 90% -10%, rgba(88,101,242,0.12), transparent 60%),
+    radial-gradient(1000px 600px at -10% 110%, rgba(0,194,168,0.12), transparent 60%),
+    var(--bg);
+  color:var(--text); transition:background var(--speed), color var(--speed);
+  overflow-x:hidden;
+}
+.reduced-motion *{animation-duration:.001ms !important; transition-duration:.001ms !important;}
+::selection{background:var(--accent); color:#fff;}
+a{color:inherit;}
+button{font-family:inherit;}
+input,select{font-family:inherit;}
+
+/* Scrollbars */
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-thumb{background:var(--panel-border); border-radius:10px;}
+::-webkit-scrollbar-track{background:transparent;}
+
+/* ============================================================
+   2. LAYOUT
+   ============================================================ */
+.app{ display:grid; grid-template-columns:280px 1fr; min-height:100vh;}
+.sidebar{
+  position:sticky; top:0; height:100vh; overflow-y:auto;
+  background:var(--panel); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  border-right:1px solid var(--panel-border); padding:20px 14px 40px; z-index:40;
+  transition:transform var(--speed);
+}
+.brand{display:flex; align-items:center; gap:10px; padding:6px 8px 18px; }
+.brand svg{width:34px;height:34px;flex-shrink:0;}
+.brand-name{font-weight:800; font-size:19px; letter-spacing:.2px;}
+.brand-sub{font-size:11px; color:var(--text-dim); margin-top:-2px;}
+
+.search-box{position:relative; margin-bottom:14px;}
+.search-box input{
+  width:100%; padding:11px 14px 11px 38px; border-radius:var(--radius-sm); border:1px solid var(--panel-border);
+  background:var(--panel-solid); color:var(--text); font-size:13.5px; outline:none;
+  box-shadow:var(--shadow-sm); transition:box-shadow .2s, transform .2s;
+}
+.search-box input:focus{box-shadow:0 0 0 3px rgba(88,101,242,.25);}
+.search-box svg{position:absolute; left:12px; top:50%; transform:translateY(-50%); width:15px;height:15px; opacity:.55;}
+
+.nav-group{margin-bottom:6px;}
+.nav-group-title{
+  font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-dim);
+  padding:14px 10px 6px; font-weight:700;
+}
+.nav-item{
+  display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:12px; cursor:pointer;
+  font-size:13.5px; color:var(--text-dim); transition:background .18s, color .18s, transform .15s; user-select:none;
+  position:relative; overflow:hidden;
+}
+.nav-item:hover{background:rgba(88,101,242,.08); color:var(--text); transform:translateX(2px);}
+.nav-item.active{background:var(--grad); color:#fff; box-shadow:var(--shadow-sm);}
+.nav-item .ic{width:17px;height:17px;flex-shrink:0; opacity:.9;}
+.nav-item .star{margin-left:auto; width:14px;height:14px; opacity:.5; cursor:pointer;}
+.nav-item .star.fav{opacity:1; color:var(--warn);}
+.hidden{display:none !important;}
+
+.main{padding:22px 26px 60px; min-width:0;}
+.topbar{
+  display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:18px; flex-wrap:wrap;
+}
+.hamburger{display:none; width:40px;height:40px;border-radius:12px;border:1px solid var(--panel-border); background:var(--panel-solid); align-items:center; justify-content:center; cursor:pointer; box-shadow:var(--shadow-sm);}
+.hamburger span{display:block; width:18px; height:2px; background:var(--text); position:relative;}
+.hamburger span::before,.hamburger span::after{content:'';position:absolute;left:0;width:18px;height:2px;background:var(--text);}
+.hamburger span::before{top:-6px;} .hamburger span::after{top:6px;}
+
+.title-block h1{font-size:23px; margin:0; font-weight:800;}
+.title-block p{margin:2px 0 0; font-size:13px; color:var(--text-dim);}
+
+.top-actions{display:flex; align-items:center; gap:10px;}
+.icon-btn{
+  width:40px;height:40px;border-radius:12px;border:1px solid var(--panel-border); background:var(--panel-solid);
+  display:flex;align-items:center;justify-content:center; cursor:pointer; box-shadow:var(--shadow-sm); color:var(--text);
+  transition:transform .15s, box-shadow .15s;
+}
+.icon-btn:hover{transform:translateY(-2px); box-shadow:var(--shadow);}
+.icon-btn svg{width:18px;height:18px;}
+
+/* Panels / Cards */
+.view{display:none; animation:fadeUp .38s ease;}
+.view.active{display:block;}
+@keyframes fadeUp{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);}}
+
+.grid{display:grid; gap:18px;}
+.grid.cols-2{grid-template-columns:1.1fr .9fr;}
+.grid.cols-3{grid-template-columns:repeat(3,1fr);}
+@media (max-width:980px){ .grid.cols-2,.grid.cols-3{grid-template-columns:1fr;} }
+
+.card{
+  background:var(--panel); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+  border:1px solid var(--panel-border); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow);
+  transition:transform .25s, box-shadow .25s;
+}
+.card:hover{ }
+.card h2{margin:0 0 14px; font-size:16px; font-weight:800;}
+.card h3{margin:18px 0 8px; font-size:13px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:.05em;}
+
+.field{margin-bottom:14px;}
+.field label{display:block; font-size:12.5px; color:var(--text-dim); margin-bottom:6px; font-weight:600;}
+.field .row{display:flex; gap:8px;}
+.input, select.input{
+  width:100%; padding:11px 13px; border-radius:12px; border:1px solid var(--panel-border);
+  background:var(--panel-solid); color:var(--text); font-size:14.5px; outline:none;
+  transition:box-shadow .2s, border-color .2s;
+}
+.input:focus{box-shadow:0 0 0 3px rgba(88,101,242,.22); border-color:var(--accent);}
+.input.error{border-color:var(--danger); animation:shake .35s;}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-5px);}75%{transform:translateX(5px);}}
+.error-msg{color:var(--danger); font-size:12px; margin-top:5px; display:none;}
+.error-msg.show{display:block;}
+
+input[type=range]{-webkit-appearance:none; width:100%; height:6px; border-radius:6px; background:var(--panel-border); outline:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:18px;height:18px;border-radius:50%; background:var(--grad); cursor:pointer; box-shadow:0 2px 8px rgba(88,101,242,.5);}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%; background:var(--grad); border:none; cursor:pointer;}
+
+.btn{
+  padding:11px 18px; border-radius:12px; border:none; background:var(--grad); color:#fff; font-weight:700; font-size:13.5px;
+  cursor:pointer; box-shadow:var(--shadow-sm); position:relative; overflow:hidden; transition:transform .15s, box-shadow .15s;
+}
+.btn:hover{transform:translateY(-2px); box-shadow:var(--shadow);}
+.btn.secondary{background:var(--panel-solid); color:var(--text); border:1px solid var(--panel-border);}
+.btn.small{padding:7px 12px; font-size:12px; border-radius:9px;}
+.btn.block{width:100%;}
+.ripple{position:absolute; border-radius:50%; background:rgba(255,255,255,.55); transform:scale(0); animation:ripple .6s linear; pointer-events:none;}
+@keyframes ripple{to{transform:scale(3); opacity:0;}}
+
+.result-box{
+  margin-top:6px; padding:18px; border-radius:16px; background:var(--grad); color:#fff; text-align:center;
+  box-shadow:var(--shadow);
+}
+.result-box .big{font-size:28px; font-weight:800; letter-spacing:.2px;}
+.result-box .cap{font-size:11.5px; opacity:.85; text-transform:uppercase; letter-spacing:.08em; margin-top:2px;}
+
+.summary-table{width:100%; border-collapse:collapse; font-size:13px; margin-top:10px;}
+.summary-table td{padding:8px 4px; border-bottom:1px solid var(--panel-border);}
+.summary-table td:last-child{text-align:right; font-weight:700;}
+
+.tag{display:inline-flex; align-items:center; gap:5px; font-size:11px; padding:4px 9px; border-radius:20px; background:rgba(88,101,242,.12); color:var(--accent); font-weight:700;}
+.badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
+
+canvas.chart{width:100%; height:220px; border-radius:14px;}
+
+/* Standard/Scientific Calculator */
+.calc-wrap{display:grid; grid-template-columns:1fr 300px; gap:18px;}
+@media (max-width:980px){.calc-wrap{grid-template-columns:1fr;}}
+.display{
+  background:var(--panel-solid); border:1px solid var(--panel-border); border-radius:18px; padding:20px;
+  text-align:right; margin-bottom:14px; box-shadow:inset 0 2px 8px rgba(0,0,0,0.04);
+}
+.display .expr{min-height:20px; color:var(--text-dim); font-size:14px; word-break:break-all;}
+.display .val{font-size:34px; font-weight:800; word-break:break-all; min-height:42px;}
+.mode-row{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+.pillgroup{display:flex; background:var(--panel-solid); border:1px solid var(--panel-border); border-radius:12px; padding:3px; gap:2px;}
+.pill{padding:6px 12px; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; color:var(--text-dim);}
+.pill.active{background:var(--grad); color:#fff;}
+
+.keys{display:grid; grid-template-columns:repeat(5,1fr); gap:8px;}
+.keys.basic{grid-template-columns:repeat(4,1fr);}
+.key{
+  padding:15px 0; border-radius:14px; border:1px solid var(--panel-border); background:var(--panel-solid);
+  font-size:16px; font-weight:700; cursor:pointer; color:var(--text); box-shadow:var(--shadow-sm); position:relative; overflow:hidden;
+  transition:transform .12s, box-shadow .12s;
+}
+.key:hover{transform:translateY(-2px);}
+.key:active{transform:scale(.95);}
+.key.op{background:var(--grad); color:#fff;}
+.key.fn{font-size:12.5px; background:rgba(88,101,242,.1); color:var(--accent);}
+.key.eq{background:linear-gradient(135deg,var(--good),#0ea56b); color:#fff;}
+.key.wide{grid-column:span 2;}
+
+.history-panel{max-height:640px; overflow-y:auto;}
+.hist-item{padding:10px 12px; border-radius:12px; background:var(--panel-solid); border:1px solid var(--panel-border); margin-bottom:8px; cursor:pointer; transition:transform .15s;}
+.hist-item:hover{transform:translateX(3px);}
+.hist-item .e{font-size:12px; color:var(--text-dim);}
+.hist-item .r{font-size:16px; font-weight:800;}
+.empty-note{color:var(--text-dim); font-size:13px; text-align:center; padding:30px 10px;}
+
+/* Converters */
+.conv-io{display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:end;}
+.conv-swap{width:42px;height:42px;border-radius:50%; border:1px solid var(--panel-border); background:var(--panel-solid); cursor:pointer; display:flex;align-items:center;justify-content:center; box-shadow:var(--shadow-sm); transition:transform .3s;}
+.conv-swap:hover{transform:rotate(180deg);}
+
+.currency-list{max-height:340px; overflow-y:auto; margin-top:10px;}
+.currency-row{display:flex; align-items:center; gap:10px; padding:9px 6px; border-bottom:1px solid var(--panel-border); font-size:13px;}
+.currency-row input.rate{width:90px; padding:6px 8px; border-radius:8px; border:1px solid var(--panel-border); background:var(--panel-solid); color:var(--text); font-size:12.5px;}
+.currency-row .code{font-weight:800; width:48px;}
+.currency-row .fav{cursor:pointer; opacity:.4; margin-left:auto;}
+.currency-row .fav.on{opacity:1; color:var(--warn);}
+
+/* toast */
+.toast-wrap{position:fixed; bottom:20px; right:20px; z-index:200; display:flex; flex-direction:column; gap:8px;}
+.toast{background:var(--panel-solid); border:1px solid var(--panel-border); box-shadow:var(--shadow); padding:12px 16px; border-radius:12px; font-size:13px; display:flex; align-items:center; gap:8px; animation:toastIn .3s ease;}
+.toast.success{border-left:4px solid var(--good);}
+.toast.error{border-left:4px solid var(--danger);}
+@keyframes toastIn{from{opacity:0; transform:translateX(30px);} to{opacity:1;transform:translateX(0);}}
+
+footer.printonly{display:none;}
+@media print{
+  .sidebar,.topbar,.top-actions,.no-print{display:none !important;}
+  .app{grid-template-columns:1fr;}
+  body{background:#fff; color:#000;}
+  .card{box-shadow:none; border:1px solid #ccc;}
+}
+
+@media (max-width:900px){
+  .app{grid-template-columns:1fr;}
+  .sidebar{position:fixed; left:0; top:0; width:280px; transform:translateX(-105%); box-shadow:var(--shadow);}
+  .sidebar.open{transform:translateX(0);}
+  .hamburger{display:flex;}
+  .overlay{display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:30;}
+  .overlay.show{display:block;}
+}
+@media (prefers-reduced-motion: reduce){ *{animation-duration:.001ms !important; transition-duration:.001ms !important;} }
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay"></div>
+<div class="app">
+
+  <!-- ============================================================
+       SIDEBAR
+  ============================================================ -->
+  <aside class="sidebar" id="sidebar" aria-label="Calculator navigation">
+    <div class="brand">
+      <svg viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="11" fill="url(#g)"/><path d="M12 14h16M12 20h16M12 26h9" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><defs><linearGradient id="g" x1="0" y1="0" x2="40" y2="40"><stop stop-color="#5865f2"/><stop offset="1" stop-color="#00c2a8"/></linearGradient></defs></svg>
+      <div><div class="brand-name">Calcura</div><div class="brand-sub">Premium Calculator Suite</div></div>
+    </div>
+
+    <div class="search-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input type="text" id="globalSearch" placeholder="Search calculators…" autocomplete="off">
+    </div>
+
+    <nav id="navTree"></nav>
+  </aside>
+
+  <!-- ============================================================
+       MAIN
+  ============================================================ -->
+  <main class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="hamburger" id="hamburger" aria-label="Toggle menu"><span></span></button>
+        <div class="title-block">
+          <h1 id="viewTitle">Standard Calculator</h1>
+          <p id="viewSub">Fast, precise everyday arithmetic</p>
+        </div>
+      </div>
+      <div class="top-actions no-print">
+        <button class="icon-btn" id="printBtn" title="Print report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg></button>
+        <button class="icon-btn" id="historyToggle" title="History"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></button>
+        <button class="icon-btn" id="themeToggle" title="Toggle theme"><svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+      </div>
+    </div>
+
+    <div id="views"></div>
+  </main>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* ==================================================================================
+   CALCURA — PREMIUM CALCULATOR SUITE
+   Single-file vanilla JS application. Sections are labeled below.
+   ================================================================================== */
+
+/* ---------------------------------------------------------------
+   0. UTILITIES
+--------------------------------------------------------------- */
+const $ = (sel,root=document)=>root.querySelector(sel);
+const $$ = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
+const fmt = (n,d=2)=>{
+  if(n===null||n===undefined||isNaN(n)) return '—';
+  return Number(n).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});
+};
+const fmtInt = n=> Number(n).toLocaleString(undefined,{maximumFractionDigits:0});
+const clamp=(v,a,b)=>Math.min(Math.max(v,a),b);
+const uid=()=>Math.random().toString(36).slice(2,9);
+
+function toast(msg,type='success'){
+  const wrap = $('#toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast '+type;
+  el.innerHTML = (type==='success'?'✓ ':'⚠ ')+msg;
+  wrap.appendChild(el);
+  setTimeout(()=>{ el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),300); }, 2600);
+}
+
+function attachRipple(el){
+  el.addEventListener('click', function(e){
+    const rect = this.getBoundingClientRect();
+    const r = document.createElement('span');
+    r.className='ripple';
+    const size = Math.max(rect.width, rect.height);
+    r.style.width = r.style.height = size+'px';
+    r.style.left = (e.clientX-rect.left-size/2)+'px';
+    r.style.top = (e.clientY-rect.top-size/2)+'px';
+    this.appendChild(r);
+    setTimeout(()=>r.remove(),650);
+  });
+}
+function rippleAll(root=document){ $$('.key,.btn',root).forEach(attachRipple); }
+
+function copyToClipboard(text){
+  navigator.clipboard?.writeText(String(text)).then(()=>toast('Copied to clipboard')).catch(()=>toast('Copy failed','error'));
+}
+
+function downloadText(filename, content, mime='text/plain'){
+  const blob = new Blob([content], {type:mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function validateNumberInput(input, {min=-Infinity,max=Infinity,allowEmpty=false}={}){
+  const errEl = input.parentElement.querySelector('.error-msg');
+  const v = input.value.trim();
+  input.classList.remove('error');
+  if(errEl) errEl.classList.remove('show');
+  if(v===''){ if(allowEmpty) return null; input.classList.add('error'); if(errEl){errEl.textContent='Required'; errEl.classList.add('show');} return NaN; }
+  const n = parseFloat(v);
+  if(isNaN(n) || n<min || n>max){
+    input.classList.add('error');
+    if(errEl){ errEl.textContent = isNaN(n) ? 'Enter a valid number' : `Must be between ${min} and ${max}`; errEl.classList.add('show'); }
+    return NaN;
+  }
+  return n;
+}
+
+/* ---------------------------------------------------------------
+   1. STORAGE / STATE
+--------------------------------------------------------------- */
+const Store = {
+  key:'calcura_v1',
+  data:{ theme:'auto', history:[], favorites:[], recents:[], currencyRates:null, reducedMotion:false },
+  load(){
+    try{
+      const raw = localStorage.getItem(this.key);
+      if(raw) Object.assign(this.data, JSON.parse(raw));
+    }catch(e){}
+  },
+  save(){ try{ localStorage.setItem(this.key, JSON.stringify(this.data)); }catch(e){} },
+  addHistory(entry){
+    this.data.history.unshift({id:uid(), t:Date.now(), ...entry});
+    this.data.history = this.data.history.slice(0,200);
+    this.save(); renderHistory();
+  },
+  clearHistory(){ this.data.history=[]; this.save(); renderHistory(); },
+  toggleFavorite(id){
+    const i = this.data.favorites.indexOf(id);
+    if(i>-1) this.data.favorites.splice(i,1); else this.data.favorites.push(id);
+    this.save(); renderNav();
+  },
+  addRecent(id){
+    this.data.recents = [id, ...this.data.recents.filter(x=>x!==id)].slice(0,5);
+    this.save(); renderNav();
+  }
+};
+Store.load();
+
+/* ---------------------------------------------------------------
+   2. THEME
+--------------------------------------------------------------- */
+function applyTheme(){
+  const t = Store.data.theme;
+  const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const effective = t==='auto' ? (sysDark?'dark':'light') : t;
+  document.documentElement.setAttribute('data-theme', effective);
+  $('#themeIcon').innerHTML = effective==='dark'
+    ? '<path d="M21 12.8A9 9 0 1111.2 3 7 7 0 0021 12.8z"/>'
+    : '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+}
+$('#themeToggle').addEventListener('click', ()=>{
+  const order = ['auto','light','dark'];
+  const cur = order.indexOf(Store.data.theme);
+  Store.data.theme = order[(cur+1)%3];
+  Store.save(); applyTheme();
+  toast('Theme: '+Store.data.theme);
+});
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) document.body.classList.add('reduced-motion');
+applyTheme();
+
+/* ---------------------------------------------------------------
+   3. NAVIGATION DATA
+--------------------------------------------------------------- */
+const NAV = [
+  {group:'Core', items:[
+    {id:'standard', label:'Standard', sub:'Fast, precise everyday arithmetic', icon:'grid'},
+    {id:'scientific', label:'Scientific', sub:'Trig, logs, powers & more', icon:'flask'},
+  ]},
+  {group:'Financial', items:[
+    {id:'emi', label:'EMI / Loan', sub:'Loan EMI & amortization', icon:'card'},
+    {id:'mortgage', label:'Mortgage', sub:'Home loan payment planner', icon:'home'},
+    {id:'compound', label:'Compound Interest', sub:'Growth with compounding', icon:'chart'},
+    {id:'simple', label:'Simple Interest', sub:'Basic interest calculation', icon:'chart'},
+    {id:'savings', label:'Savings Growth', sub:'Recurring deposit growth', icon:'piggy'},
+    {id:'invest', label:'Investment Return', sub:'CAGR & future value', icon:'trend'},
+    {id:'sip', label:'SIP Calculator', sub:'Systematic investment plan', icon:'trend'},
+    {id:'retire', label:'Retirement Savings', sub:'Plan your nest egg', icon:'shield'},
+    {id:'inflation', label:'Inflation Calculator', sub:'Future value of money', icon:'trend-down'},
+    {id:'curgrowth', label:'Currency Growth', sub:'Growth in foreign currency', icon:'globe'},
+  ]},
+  {group:'Health', items:[
+    {id:'bmi', label:'BMI Calculator', sub:'Body mass index', icon:'heart'},
+    {id:'bmr', label:'BMR Calculator', sub:'Basal metabolic rate', icon:'heart'},
+    {id:'calories', label:'Daily Calories', sub:'TDEE & goals', icon:'heart'},
+    {id:'bodyfat', label:'Body Fat %', sub:'Navy method estimate', icon:'heart'},
+    {id:'agecalc', label:'Age Calculator', sub:'Exact age breakdown', icon:'clock'},
+    {id:'water', label:'Water Intake', sub:'Daily hydration target', icon:'drop'},
+    {id:'hr', label:'Heart Rate Zones', sub:'Training zones', icon:'heart'},
+    {id:'macro', label:'Macro Nutrients', sub:'Protein / carbs / fat split', icon:'heart'},
+    {id:'idealweight', label:'Ideal Weight', sub:'Devine formula estimate', icon:'heart'},
+    {id:'burn', label:'Calorie Burn', sub:'Activity energy expenditure', icon:'heart'},
+  ]},
+  {group:'Unit Converters', items:[
+    {id:'conv-length', label:'Length', sub:'m, ft, mi, km…', icon:'ruler'},
+    {id:'conv-weight', label:'Weight', sub:'kg, lb, oz…', icon:'ruler'},
+    {id:'conv-temp', label:'Temperature', sub:'°C, °F, K', icon:'ruler'},
+    {id:'conv-area', label:'Area', sub:'m², acre, ha…', icon:'ruler'},
+    {id:'conv-volume', label:'Volume', sub:'L, gal, cup…', icon:'ruler'},
+    {id:'conv-speed', label:'Speed', sub:'km/h, mph, m/s', icon:'ruler'},
+    {id:'conv-time', label:'Time', sub:'s, min, day, yr', icon:'ruler'},
+    {id:'conv-pressure', label:'Pressure', sub:'Pa, bar, psi', icon:'ruler'},
+    {id:'conv-energy', label:'Energy', sub:'J, cal, kWh', icon:'ruler'},
+    {id:'conv-power', label:'Power', sub:'W, kW, hp', icon:'ruler'},
+    {id:'conv-freq', label:'Frequency', sub:'Hz, kHz, MHz', icon:'ruler'},
+    {id:'conv-data', label:'Data Storage', sub:'bit, byte, GB…', icon:'ruler'},
+    {id:'conv-angle', label:'Angle', sub:'deg, rad, grad', icon:'ruler'},
+    {id:'conv-fuel', label:'Fuel Economy', sub:'mpg, km/L, L/100km', icon:'ruler'},
+  ]},
+  {group:'Currency', items:[
+    {id:'currency', label:'Currency Converter', sub:'Offline exchange table', icon:'globe'},
+  ]},
+];
+const ICONS = {
+  grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  flask:'<path d="M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3"/>',
+  card:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+  home:'<path d="M3 11l9-8 9 8M5 10v10h14V10"/>',
+  chart:'<path d="M4 20V10M12 20V4M20 20v-7"/>',
+  piggy:'<path d="M4 12a8 5 0 0116 0v3a2 2 0 01-2 2h-1v2h-2v-2H9v2H7v-2H6a2 2 0 01-2-2v-1H2v-3h2"/><circle cx="15" cy="11" r=".6"/>',
+  trend:'<path d="M3 17l6-6 4 4 8-8M15 6h6v6"/>',
+  'trend-down':'<path d="M3 7l6 6 4-4 8 8M21 11v6h-6"/>',
+  shield:'<path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/>',
+  globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18 14 14 0 010-18z"/>',
+  heart:'<path d="M12 21s-7-4.5-9.5-9C.7 8.3 2 4.5 5.5 3.6 8 3 10.3 4.3 12 6.7 13.7 4.3 16 3 18.5 3.6 22 4.5 23.3 8.3 21.5 12 19 16.5 12 21 12 21z"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+  drop:'<path d="M12 2s7 8 7 13a7 7 0 01-14 0c0-5 7-13 7-13z"/>',
+  ruler:'<rect x="3" y="8" width="18" height="8" rx="1.5"/><path d="M7 8v3M11 8v3M15 8v3"/>',
+};
+function svgIcon(name){ return `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||ICONS.grid}</svg>`; }
+
+let currentView = 'standard';
+
+function renderNav(filter=''){
+  const tree = $('#navTree');
+  let html = '';
+  const f = filter.trim().toLowerCase();
+  NAV.forEach(g=>{
+    const items = g.items.filter(it=> !f || it.label.toLowerCase().includes(f) || it.sub.toLowerCase().includes(f));
+    if(!items.length) return;
+    html += `<div class="nav-group"><div class="nav-group-title">${g.group}</div>`;
+    items.forEach(it=>{
+      const fav = Store.data.favorites.includes(it.id);
+      html += `<div class="nav-item ${it.id===currentView?'active':''}" data-view="${it.id}">
+        ${svgIcon(it.icon)}<span>${it.label}</span>
+        <svg class="star ${fav?'fav':''}" data-fav="${it.id}" viewBox="0 0 24 24" fill="${fav?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  if(!html) html = '<div class="empty-note">No matches found</div>';
+  tree.innerHTML = html;
+  $$('.nav-item').forEach(el=>{
+    el.addEventListener('click', (e)=>{
+      if(e.target.closest('.star')) return;
+      navigateTo(el.dataset.view);
+    });
+  });
+  $$('.star').forEach(el=>{
+    el.addEventListener('click',(e)=>{ e.stopPropagation(); Store.toggleFavorite(el.dataset.fav); });
+  });
+}
+$('#globalSearch').addEventListener('input', e=> renderNav(e.target.value));
+
+function navigateTo(id){
+  currentView = id;
+  Store.addRecent(id);
+  $$('.view').forEach(v=>v.classList.remove('active'));
+  const el = document.getElementById('view-'+id);
+  if(el) el.classList.add('active');
+  const meta = NAV.flatMap(g=>g.items).find(it=>it.id===id);
+  if(meta){ $('#viewTitle').textContent = meta.label; $('#viewSub').textContent = meta.sub; }
+  renderNav($('#globalSearch').value);
+  $('#sidebar').classList.remove('open'); $('#overlay').classList.remove('show');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+$('#hamburger').addEventListener('click', ()=>{ $('#sidebar').classList.add('open'); $('#overlay').classList.add('show'); });
+$('#overlay').addEventListener('click', ()=>{ $('#sidebar').classList.remove('open'); $('#overlay').classList.remove('show'); });
+$('#printBtn').addEventListener('click', ()=> window.print());
+
+/* ---------------------------------------------------------------
+   4. EXPRESSION ENGINE (shunting-yard) for Standard & Scientific calc
+--------------------------------------------------------------- */
+const MathEngine = (()=>{
+  let angleMode = 'deg';
+  function toRad(x){ return angleMode==='deg' ? x*Math.PI/180 : x; }
+  function fromRad(x){ return angleMode==='deg' ? x*180/Math.PI : x; }
+  function factorial(n){
+    if(n<0 || Math.floor(n)!==n) return NaN;
+    if(n>170) return Infinity;
+    let r=1; for(let i=2;i<=n;i++) r*=i; return r;
+  }
+  const FUNCS = {
+    sin:x=>Math.sin(toRad(x)), cos:x=>Math.cos(toRad(x)), tan:x=>Math.tan(toRad(x)),
+    asin:x=>fromRad(Math.asin(x)), acos:x=>fromRad(Math.acos(x)), atan:x=>fromRad(Math.atan(x)),
+    sinh:Math.sinh, cosh:Math.cosh, tanh:Math.tanh,
+    asinh:Math.asinh, acosh:Math.acosh, atanh:Math.atanh,
+    log:Math.log10, ln:Math.log, sqrt:Math.sqrt, cbrt:Math.cbrt,
+    abs:Math.abs, exp:Math.exp, fact:factorial,
+  };
+  const CONSTS = { pi:Math.PI, e:Math.E };
+
+  function tokenize(expr){
+    const tokens = []; let i=0;
+    expr = expr.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-').replace(/π/g,'pi');
+    while(i<expr.length){
+      const c = expr[i];
+      if(/\s/.test(c)){ i++; continue; }
+      if(/[0-9.]/.test(c)){
+        let j=i; while(j<expr.length && /[0-9.eE]/.test(expr[j])){
+          if((expr[j]==='e'||expr[j]==='E') && !/[0-9]/.test(expr[j+1]||'')) break;
+          j++;
+        }
+        tokens.push({t:'num', v:parseFloat(expr.slice(i,j))}); i=j; continue;
+      }
+      if(/[a-zA-Z_]/.test(c)){
+        let j=i; while(j<expr.length && /[a-zA-Z_0-9]/.test(expr[j])) j++;
+        tokens.push({t:'id', v:expr.slice(i,j)}); i=j; continue;
+      }
+      if('+-*/^%(),!'.includes(c)){ tokens.push({t:'op', v:c}); i++; continue; }
+      i++; // skip unknown char
+    }
+    return tokens;
+  }
+
+  function toPostfix(tokens){
+    const out=[], ops=[];
+    const prec = {'+':2,'-':2,'*':3,'/':3,'%':3,'^':4,'u-':5};
+    const rightAssoc = {'^':true,'u-':true};
+    let prevType=null;
+    for(let k=0;k<tokens.length;k++){
+      const tok = tokens[k];
+      if(tok.t==='num'){ out.push(tok); prevType='num'; continue; }
+      if(tok.t==='id'){
+        if(CONSTS.hasOwnProperty(tok.v)){ out.push({t:'num', v:CONSTS[tok.v]}); prevType='num'; }
+        else { ops.push({t:'func', v:tok.v}); prevType='func'; }
+        continue;
+      }
+      if(tok.v==='('){ ops.push(tok); prevType='('; continue; }
+      if(tok.v===')'){
+        while(ops.length && ops[ops.length-1].v!=='(') out.push(ops.pop());
+        ops.pop();
+        if(ops.length && ops[ops.length-1].t==='func') out.push(ops.pop());
+        prevType='num'; continue;
+      }
+      if(tok.v==='!'){ out.push({t:'postfix', v:'!'}); prevType='num'; continue; }
+      if(tok.v==='-' && (prevType===null || prevType==='(' || prevType==='op')){
+        ops.push({t:'op', v:'u-'}); prevType='op'; continue;
+      }
+      // binary operator
+      const o1 = tok.v;
+      while(ops.length){
+        const top = ops[ops.length-1];
+        if(top.t==='func'){ out.push(ops.pop()); continue; }
+        if(top.v==='(') break;
+        const p2 = prec[top.v]||0, p1=prec[o1]||0;
+        if(p2>p1 || (p2===p1 && !rightAssoc[o1])) out.push(ops.pop()); else break;
+      }
+      ops.push({t:'op', v:o1}); prevType='op';
+    }
+    while(ops.length) out.push(ops.pop());
+    return out;
+  }
+
+  function evalPostfix(pf){
+    const st=[];
+    pf.forEach(tok=>{
+      if(tok.t==='num'){ st.push(tok.v); return; }
+      if(tok.t==='postfix' && tok.v==='!'){ st.push(factorial(st.pop())); return; }
+      if(tok.t==='func'){
+        const a = st.pop();
+        if(FUNCS[tok.v]) st.push(FUNCS[tok.v](a));
+        else st.push(NaN);
+        return;
+      }
+      if(tok.v==='u-'){ st.push(-st.pop()); return; }
+      const b = st.pop(), a = st.pop();
+      switch(tok.v){
+        case '+': st.push(a+b); break;
+        case '-': st.push(a-b); break;
+        case '*': st.push(a*b); break;
+        case '/': st.push(a/b); break;
+        case '%': st.push(a%b); break;
+        case '^': st.push(Math.pow(a,b)); break;
+        default: st.push(NaN);
+      }
+    });
+    return st.pop();
+  }
+
+  function evaluate(expr, mode){
+    angleMode = mode || angleMode;
+    if(!expr || !expr.trim()) return NaN;
+    try{
+      const tokens = tokenize(expr);
+      const pf = toPostfix(tokens);
+      const r = evalPostfix(pf);
+      return r;
+    }catch(e){ return NaN; }
+  }
+  return { evaluate, setAngleMode:(m)=>angleMode=m, getAngleMode:()=>angleMode };
+})();
+
+/* ---------------------------------------------------------------
+   5. VIEW BUILDER HELPERS
+--------------------------------------------------------------- */
+const viewsRoot = $('#views');
+function makeView(id, html){
+  const div = document.createElement('div');
+  div.className='view'; div.id='view-'+id;
+  div.innerHTML = html;
+  viewsRoot.appendChild(div);
+  return div;
+}
+function field(labelText, inputHtml){
+  return `<div class="field"><label>${labelText}</label>${inputHtml}<div class="error-msg"></div></div>`;
+}
+function numInput(id, ph, val=''){ return `<input class="input" type="text" inputmode="decimal" id="${id}" placeholder="${ph}" value="${val}">`; }
+
+/* ---------------------------------------------------------------
+   6. CHART RENDERING (canvas)
+--------------------------------------------------------------- */
+function drawBarChart(canvas, labels, values, opts={}){
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio||1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = w*dpr; canvas.height = h*dpr; ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,w,h);
+  const max = Math.max(...values, 1);
+  const pad = 30, bw = (w-pad*2)/values.length*0.6, gap=(w-pad*2)/values.length;
+  const styles = getComputedStyle(document.documentElement);
+  const accent = styles.getPropertyValue('--accent').trim() || '#5865f2';
+  const accent2 = styles.getPropertyValue('--accent2').trim() || '#00c2a8';
+  const textc = styles.getPropertyValue('--text-dim').trim() || '#666';
+  ctx.font='11px system-ui';
+  values.forEach((v,i)=>{
+    const bh = (h-50) * (v/max);
+    const x = pad + i*gap + (gap-bw)/2;
+    const y = h-30-bh;
+    const grad = ctx.createLinearGradient(0,y,0,y+bh);
+    grad.addColorStop(0,accent); grad.addColorStop(1,accent2);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(x,y,bw,bh,[6,6,0,0]) : ctx.rect(x,y,bw,bh);
+    ctx.fill();
+    ctx.fillStyle = textc;
+    ctx.textAlign='center';
+    ctx.fillText(labels[i], x+bw/2, h-14);
+  });
+}
+function drawLineChart(canvas, labels, series, opts={}){
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio||1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = w*dpr; canvas.height = h*dpr; ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,w,h);
+  const styles = getComputedStyle(document.documentElement);
+  const accent = styles.getPropertyValue('--accent').trim();
+  const border = styles.getPropertyValue('--panel-border').trim();
+  const textc = styles.getPropertyValue('--text-dim').trim();
+  const pad=34;
+  const allVals = series.flat();
+  const max = Math.max(...allVals,1), min = Math.min(...allVals,0);
+  ctx.strokeStyle = border; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y = pad + (h-pad-20)*i/4;
+    ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(w-10,y); ctx.stroke();
+  }
+  const stepX = (w-pad-20)/(labels.length-1||1);
+  ctx.strokeStyle = accent; ctx.lineWidth=2.5; ctx.beginPath();
+  series.forEach((v,i)=>{
+    const x = pad + i*stepX;
+    const y = h-20 - (h-pad-20)*(v-min)/((max-min)||1);
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  ctx.fillStyle = accent;
+  series.forEach((v,i)=>{
+    const x = pad + i*stepX;
+    const y = h-20 - (h-pad-20)*(v-min)/((max-min)||1);
+    ctx.beginPath(); ctx.arc(x,y,3,0,7); ctx.fill();
+  });
+  ctx.fillStyle = textc; ctx.font='10px system-ui'; ctx.textAlign='center';
+  labels.forEach((l,i)=>{ if(i%Math.ceil(labels.length/8||1)===0) ctx.fillText(l, pad+i*stepX, h-4); });
+}
+
+/* ---------------------------------------------------------------
+   7. HISTORY PANEL
+--------------------------------------------------------------- */
+function renderHistory(){
+  const el = document.getElementById('historyList');
+  if(!el) return;
+  if(!Store.data.history.length){ el.innerHTML = '<div class="empty-note">No calculations yet</div>'; return; }
+  el.innerHTML = Store.data.history.map(h=>`
+    <div class="hist-item" data-copy="${encodeURIComponent(h.result)}">
+      <div class="e">${h.label}</div>
+      <div class="r">${h.expr} = ${h.result}</div>
+    </div>`).join('');
+  $$('#historyList .hist-item').forEach(it=>{
+    it.addEventListener('click', ()=> copyToClipboard(decodeURIComponent(it.dataset.copy)));
+  });
+}
+
+/* =====================================================================================
+   8. VIEW: STANDARD CALCULATOR
+===================================================================================== */
+makeView('standard', `
+<div class="calc-wrap">
+  <div class="card">
+    <div class="mode-row">
+      <div class="badge-row"><span class="tag">Memory: <span id="memVal">0</span></span></div>
+      <button class="btn secondary small" id="stdClearHist">Clear History</button>
+    </div>
+    <div class="display">
+      <div class="expr" id="stdExpr">&nbsp;</div>
+      <div class="val" id="stdVal">0</div>
+    </div>
+    <div class="keys">
+      <button class="key fn" data-k="MC">MC</button><button class="key fn" data-k="MR">MR</button><button class="key fn" data-k="M+">M+</button><button class="key fn" data-k="M-">M-</button><button class="key fn" data-k="MS">MS</button>
+      <button class="key fn" data-k="C">C</button><button class="key fn" data-k="(">(</button><button class="key fn" data-k=")">)</button><button class="key fn" data-k="%">%</button><button class="key fn" data-k="back">⌫</button>
+      <button class="key" data-k="7">7</button><button class="key" data-k="8">8</button><button class="key" data-k="9">9</button><button class="key op" data-k="/">÷</button><button class="key fn" data-k="fact">n!</button>
+      <button class="key" data-k="4">4</button><button class="key" data-k="5">5</button><button class="key" data-k="6">6</button><button class="key op" data-k="*">×</button><button class="key fn" data-k="sqrt">√</button>
+      <button class="key" data-k="1">1</button><button class="key" data-k="2">2</button><button class="key" data-k="3">3</button><button class="key op" data-k="-">−</button><button class="key fn" data-k="^">xʸ</button>
+      <button class="key wide" data-k="0">0</button><button class="key" data-k=".">.</button><button class="key op" data-k="+">+</button><button class="key eq" data-k="=" style="grid-row:span 1;">=</button>
+    </div>
+    <p style="margin-top:12px;font-size:11.5px;color:var(--text-dim);">Keyboard: digits, + − * / ( ) . Enter = evaluate, Backspace = delete, Esc = clear</p>
+  </div>
+  <div class="card history-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2 style="margin:0;">History</h2>
+      <div style="display:flex;gap:6px;">
+        <button class="btn secondary small" id="stdExport">Export</button>
+        <label class="btn secondary small" style="cursor:pointer;">Import<input type="file" id="stdImport" accept=".json" style="display:none;"></label>
+      </div>
+    </div>
+    <div id="historyList" style="margin-top:12px;"></div>
+  </div>
+</div>
+`);
+
+const Std = (()=>{
+  let expr = '', memory = 0;
+  const exprEl = ()=>document.getElementById('stdExpr');
+  const valEl = ()=>document.getElementById('stdVal');
+  function updateDisplay(){
+    exprEl().textContent = expr || '\u00A0';
+    const r = MathEngine.evaluate(expr, 'deg');
+    valEl().textContent = expr ? (isNaN(r) ? 'Error' : trimNum(r)) : '0';
+  }
+  function trimNum(n){
+    if(!isFinite(n)) return n>0?'Infinity':'-Infinity';
+    return Math.abs(n)<1e-10 && n!==0 ? n.toExponential(4) : String(Math.round(n*1e10)/1e10);
+  }
+  function press(k){
+    if(k==='C'){ expr=''; updateDisplay(); return; }
+    if(k==='back'){ expr = expr.slice(0,-1); updateDisplay(); return; }
+    if(k==='='){
+      if(!expr) return;
+      const r = MathEngine.evaluate(expr,'deg');
+      if(isNaN(r)){ valEl().textContent='Error'; valEl().style.color='var(--danger)'; setTimeout(()=>valEl().style.color='',600); return; }
+      Store.addHistory({label:'Standard', expr, result: trimNum(r)});
+      expr = trimNum(r); updateDisplay(); return;
+    }
+    if(k==='fact'){ expr += '!'; updateDisplay(); return; }
+    if(k==='sqrt'){ expr += 'sqrt('; updateDisplay(); return; }
+    if(k==='MC'){ memory=0; syncMem(); return; }
+    if(k==='MR'){ expr += trimNum(memory); updateDisplay(); return; }
+    if(k==='MS'){ memory = MathEngine.evaluate(expr,'deg')||0; syncMem(); return; }
+    if(k==='M+'){ memory += (MathEngine.evaluate(expr,'deg')||0); syncMem(); return; }
+    if(k==='M-'){ memory -= (MathEngine.evaluate(expr,'deg')||0); syncMem(); return; }
+    expr += k; updateDisplay();
+  }
+  function syncMem(){ document.getElementById('memVal').textContent = trimNum(memory); }
+  document.getElementById('view-standard').addEventListener('click', e=>{
+    const btn = e.target.closest('.key'); if(!btn) return; press(btn.dataset.k);
+  });
+  document.addEventListener('keydown', e=>{
+    if(currentView!=='standard') return;
+    if(/[0-9.+\-*/()%]/.test(e.key)){ press(e.key); }
+    else if(e.key==='Enter'){ e.preventDefault(); press('='); }
+    else if(e.key==='Backspace'){ press('back'); }
+    else if(e.key==='Escape'){ press('C'); }
+  });
+  document.getElementById('stdClearHist').addEventListener('click', ()=>{ Store.clearHistory(); toast('History cleared'); });
+  document.getElementById('stdExport').addEventListener('click', ()=>{ downloadText('calcura-history.json', JSON.stringify(Store.data.history,null,2), 'application/json'); toast('History exported'); });
+  document.getElementById('stdImport').addEventListener('change', (e)=>{
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{ const arr = JSON.parse(reader.result); if(Array.isArray(arr)){ Store.data.history = arr.concat(Store.data.history).slice(0,300); Store.save(); renderHistory(); toast('History imported'); } }
+      catch(err){ toast('Invalid file','error'); }
+    };
+    reader.readAsText(file);
+  });
+  updateDisplay(); syncMem();
+  return {press};
+})();
+
+/* =====================================================================================
+   9. VIEW: SCIENTIFIC CALCULATOR
+===================================================================================== */
+makeView('scientific', `
+<div class="calc-wrap">
+  <div class="card">
+    <div class="mode-row">
+      <div class="pillgroup" id="angleMode">
+        <div class="pill active" data-mode="deg">DEG</div>
+        <div class="pill" data-mode="rad">RAD</div>
+      </div>
+      <span class="tag" id="sciNotToggleWrap" style="cursor:pointer;">Notation: <span id="sciNotState">Auto</span></span>
+    </div>
+    <div class="display">
+      <div class="expr" id="sciExpr">&nbsp;</div>
+      <div class="val" id="sciVal">0</div>
+    </div>
+    <div class="keys">
+      <button class="key fn" data-k="sin(">sin</button><button class="key fn" data-k="cos(">cos</button><button class="key fn" data-k="tan(">tan</button><button class="key fn" data-k="C">C</button><button class="key fn" data-k="back">⌫</button>
+      <button class="key fn" data-k="asin(">asin</button><button class="key fn" data-k="acos(">acos</button><button class="key fn" data-k="atan(">atan</button><button class="key fn" data-k="(">(</button><button class="key fn" data-k=")">)</button>
+      <button class="key fn" data-k="sinh(">sinh</button><button class="key fn" data-k="cosh(">cosh</button><button class="key fn" data-k="tanh(">tanh</button><button class="key fn" data-k="ln(">ln</button><button class="key fn" data-k="log(">log</button>
+      <button class="key fn" data-k="pi">π</button><button class="key fn" data-k="e">e</button><button class="key fn" data-k="sqrt(">√</button><button class="key fn" data-k="cbrt(">∛</button><button class="key fn" data-k="^">xʸ</button>
+      <button class="key" data-k="7">7</button><button class="key" data-k="8">8</button><button class="key" data-k="9">9</button><button class="key op" data-k="/">÷</button><button class="key fn" data-k="fact">n!</button>
+      <button class="key" data-k="4">4</button><button class="key" data-k="5">5</button><button class="key" data-k="6">6</button><button class="key op" data-k="*">×</button><button class="key fn" data-k="abs(">|x|</button>
+      <button class="key" data-k="1">1</button><button class="key" data-k="2">2</button><button class="key" data-k="3">3</button><button class="key op" data-k="-">−</button><button class="key fn" data-k="rand">rand</button>
+      <button class="key wide" data-k="0">0</button><button class="key" data-k=".">.</button><button class="key op" data-k="+">+</button><button class="key eq" data-k="=">=</button>
+    </div>
+  </div>
+  <div class="card history-panel">
+    <h2>Result Detail</h2>
+    <div id="sciDetail" class="empty-note">Evaluate an expression to see details</div>
+  </div>
+</div>
+`);
+const Sci = (()=>{
+  let expr='', mode='deg', autoNotation=true;
+  const exprEl=()=>document.getElementById('sciExpr'), valEl=()=>document.getElementById('sciVal');
+  function fmtSci(n){
+    if(!isFinite(n)) return n>0?'Infinity':'-Infinity';
+    if(autoNotation && (Math.abs(n)>=1e9 || (Math.abs(n)<1e-6 && n!==0))) return n.toExponential(6);
+    return String(Math.round(n*1e10)/1e10);
+  }
+  function updateDisplay(){
+    exprEl().textContent = expr || '\u00A0';
+    const r = MathEngine.evaluate(expr, mode);
+    valEl().textContent = expr ? (isNaN(r)?'Error':fmtSci(r)) : '0';
+  }
+  function press(k){
+    if(k==='C'){ expr=''; updateDisplay(); return; }
+    if(k==='back'){ expr=expr.slice(0,-1); updateDisplay(); return; }
+    if(k==='rand'){ expr += Math.random().toFixed(6); updateDisplay(); return; }
+    if(k==='fact'){ expr += '!'; updateDisplay(); return; }
+    if(k==='='){
+      if(!expr) return;
+      const r = MathEngine.evaluate(expr, mode);
+      if(isNaN(r)){ valEl().textContent='Error'; return; }
+      Store.addHistory({label:'Scientific ('+mode+')', expr, result: fmtSci(r)});
+      document.getElementById('sciDetail').innerHTML = `
+        <div class="summary-table">
+          <tr><td>Expression</td><td>${expr}</td></tr>
+          <tr><td>Result</td><td>${fmtSci(r)}</td></tr>
+          <tr><td>Mode</td><td>${mode.toUpperCase()}</td></tr>
+          <tr><td>Scientific Notation</td><td>${r.toExponential(6)}</td></tr>
+        </div>`;
+      expr = fmtSci(r); updateDisplay(); return;
+    }
+    expr += k; updateDisplay();
+  }
+  document.getElementById('view-scientific').addEventListener('click', e=>{
+    const btn = e.target.closest('.key'); if(btn){ press(btn.dataset.k); return; }
+    const pill = e.target.closest('.pill');
+    if(pill){ mode = pill.dataset.mode; $$('#angleMode .pill').forEach(p=>p.classList.remove('active')); pill.classList.add('active'); updateDisplay(); }
+  });
+  document.getElementById('sciNotToggleWrap').addEventListener('click', ()=>{
+    autoNotation = !autoNotation;
+    document.getElementById('sciNotState').textContent = autoNotation?'Auto':'Fixed';
+    updateDisplay();
+  });
+  document.addEventListener('keydown', e=>{
+    if(currentView!=='scientific') return;
+    if(/[0-9.+\-*/()%]/.test(e.key)) press(e.key);
+    else if(e.key==='Enter'){ e.preventDefault(); press('='); }
+    else if(e.key==='Backspace') press('back');
+    else if(e.key==='Escape') press('C');
+  });
+  updateDisplay();
+  return {press};
+})();
+
+/* =====================================================================================
+   10. FINANCIAL CALCULATORS
+===================================================================================== */
+function financialCardShell(id, title, formHtml, resultId){
+  return makeView(id, `
+  <div class="grid cols-2">
+    <div class="card">
+      <h2>${title}</h2>
+      ${formHtml}
+    </div>
+    <div class="card">
+      <h2>Summary</h2>
+      <div id="${resultId}"><div class="empty-note">Enter values to see results</div></div>
+      <canvas class="chart" id="${resultId}-chart"></canvas>
+      <button class="btn secondary block" style="margin-top:12px;" id="${resultId}-download">Download Summary (.txt)</button>
+    </div>
+  </div>`);
+}
+function bindLiveInputs(viewId, calcFn){
+  const view = document.getElementById('view-'+viewId);
+  view.addEventListener('input', ()=>{
+    view.querySelectorAll('input[type=range]').forEach(r=>{
+      const out = view.querySelector('#'+r.id+'-out'); if(out) out.textContent = r.value;
+      const twin = view.querySelector('#'+r.id+'-num'); if(twin && document.activeElement!==twin) twin.value = r.value;
+    });
+    view.querySelectorAll('.num-for-range').forEach(n=>{
+      const range = view.querySelector('#'+n.dataset.range); if(range && document.activeElement===n) range.value = n.value;
+    });
+    calcFn();
+  });
+  calcFn();
+}
+function sliderField(id,label,min,max,step,val,suffix=''){
+  return `<div class="field"><label>${label}: <b><span id="${id}-out">${val}</span>${suffix}</b></label>
+    <input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}"></div>`;
+}
+function downloadSummaryBtn(btnId, titleGetter, linesGetter){
+  document.getElementById(btnId).addEventListener('click', ()=>{
+    const lines = linesGetter();
+    if(!lines) { toast('Nothing to export yet','error'); return; }
+    downloadText(titleGetter().replace(/\s+/g,'_')+'.txt', lines);
+    toast('Summary downloaded');
+  });
+}
+
+/* ---- EMI / Loan Calculator ---- */
+financialCardShell('emi','EMI / Loan Calculator', `
+  ${sliderField('emiAmt','Loan Amount',10000,10000000,1000,500000,'')}
+  ${sliderField('emiRate','Annual Interest Rate',1,25,0.1,9.5,'%')}
+  ${sliderField('emiTenure','Tenure (years)',1,30,1,5,' yrs')}
+`, 'emiResult');
+bindLiveInputs('emi', ()=>{
+  const P = +document.getElementById('emiAmt').value;
+  const r = +document.getElementById('emiRate').value/1200;
+  const n = +document.getElementById('emiTenure').value*12;
+  const emi = r===0 ? P/n : P*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1);
+  const total = emi*n, interest = total-P;
+  document.getElementById('emiResult').innerHTML = `
+    <div class="result-box"><div class="big">₹${fmt(emi,2)}</div><div class="cap">Monthly EMI</div></div>
+    <table class="summary-table">
+      <tr><td>Principal</td><td>₹${fmt(P,0)}</td></tr>
+      <tr><td>Total Interest</td><td>₹${fmt(interest,0)}</td></tr>
+      <tr><td>Total Payment</td><td>₹${fmt(total,0)}</td></tr>
+      <tr><td>Tenure</td><td>${n} months</td></tr>
+    </table>`;
+  drawBarChart(document.getElementById('emiResult-chart'), ['Principal','Interest'], [P, interest]);
+  window._emiLast = {emi,total,interest,P,n};
+});
+downloadSummaryBtn('emiResult-download', ()=>'EMI Summary', ()=>{
+  const d = window._emiLast; if(!d) return null;
+  return `EMI / Loan Summary\n===================\nPrincipal: ${fmt(d.P,2)}\nMonthly EMI: ${fmt(d.emi,2)}\nTotal Interest: ${fmt(d.interest,2)}\nTotal Payment: ${fmt(d.total,2)}\nTenure: ${d.n} months\n`;
+});
+
+/* ---- Mortgage Calculator ---- */
+financialCardShell('mortgage','Mortgage Calculator', `
+  ${sliderField('mortHome','Home Price',50000,2000000,5000,350000,'')}
+  ${sliderField('mortDown','Down Payment',0,1000000,1000,70000,'')}
+  ${sliderField('mortRate','Interest Rate',1,15,0.1,6.5,'%')}
+  ${sliderField('mortTerm','Term (years)',5,40,1,30,' yrs')}
+  ${sliderField('mortTax','Annual Property Tax + Insurance',0,50000,100,4200,'')}
+`, 'mortResult');
+bindLiveInputs('mortgage', ()=>{
+  const home = +document.getElementById('mortHome').value;
+  const down = +document.getElementById('mortDown').value;
+  const rate = +document.getElementById('mortRate').value/1200;
+  const years = +document.getElementById('mortTerm').value;
+  const taxIns = +document.getElementById('mortTax').value/12;
+  const P = home-down, n = years*12;
+  const pi = rate===0? P/n : P*rate*Math.pow(1+rate,n)/(Math.pow(1+rate,n)-1);
+  const monthly = pi+taxIns;
+  document.getElementById('mortResult').innerHTML = `
+    <div class="result-box"><div class="big">$${fmt(monthly,2)}</div><div class="cap">Total Monthly Payment</div></div>
+    <table class="summary-table">
+      <tr><td>Loan Amount</td><td>$${fmt(P,0)}</td></tr>
+      <tr><td>Principal & Interest</td><td>$${fmt(pi,2)}</td></tr>
+      <tr><td>Tax + Insurance (mo)</td><td>$${fmt(taxIns,2)}</td></tr>
+      <tr><td>Total Interest (life)</td><td>$${fmt(pi*n-P,0)}</td></tr>
+    </table>`;
+  drawBarChart(document.getElementById('mortResult-chart'), ['P&I','Tax/Ins'], [pi, taxIns]);
+  window._mortLast = {home,down,P,monthly,pi,taxIns,n};
+});
+downloadSummaryBtn('mortResult-download', ()=>'Mortgage Summary', ()=>{
+  const d = window._mortLast; if(!d) return null;
+  return `Mortgage Summary\n=================\nHome Price: ${fmt(d.home,2)}\nDown Payment: ${fmt(d.down,2)}\nLoan Amount: ${fmt(d.P,2)}\nMonthly P&I: ${fmt(d.pi,2)}\nMonthly Tax/Ins: ${fmt(d.taxIns,2)}\nTotal Monthly: ${fmt(d.monthly,2)}\n`;
+});
+
+/* ---- Compound Interest ---- */
+financialCardShell('compound','Compound Interest Calculator', `
+  ${sliderField('ciPrincipal','Principal',100,1000000,100,100000,'')}
+  ${sliderField('ciRate','Annual Rate',0.5,20,0.1,8,'%')}
+  ${sliderField('ciYears','Years',1,40,1,10,' yrs')}
+  <div class="field"><label>Compounding Frequency</label>
+  <select class="input" id="ciFreq"><option value="1">Annually</option><option value="4">Quarterly</option><option value="12" selected>Monthly</option><option value="365">Daily</option></select></div>
+`, 'ciResult');
+bindLiveInputs('compound', ()=>{
+  const P = +document.getElementById('ciPrincipal').value;
+  const r = +document.getElementById('ciRate').value/100;
+  const t = +document.getElementById('ciYears').value;
+  const n = +document.getElementById('ciFreq').value;
+  const A = P*Math.pow(1+r/n,n*t);
+  const labels=[],vals=[];
+  for(let y=0;y<=t;y++){ labels.push('Y'+y); vals.push(P*Math.pow(1+r/n,n*y)); }
+  document.getElementById('ciResult').innerHTML = `
+    <div class="result-box"><div class="big">$${fmt(A,2)}</div><div class="cap">Future Value</div></div>
+    <table class="summary-table"><tr><td>Principal</td><td>$${fmt(P,0)}</td></tr><tr><td>Interest Earned</td><td>$${fmt(A-P,0)}</td></tr><tr><td>Effective Return</td><td>${fmt(((A-P)/P)*100,1)}%</td></tr></table>`;
+  drawLineChart(document.getElementById('ciResult-chart'), labels, vals);
+  window._ciLast = {P,A,t};
+});
+downloadSummaryBtn('ciResult-download', ()=>'Compound Interest Summary', ()=>{
+  const d = window._ciLast; if(!d) return null;
+  return `Compound Interest Summary\n==========================\nPrincipal: ${fmt(d.P,2)}\nYears: ${d.t}\nFuture Value: ${fmt(d.A,2)}\nInterest Earned: ${fmt(d.A-d.P,2)}\n`;
+});
+
+/* ---- Simple Interest ---- */
+financialCardShell('simple','Simple Interest Calculator', `
+  ${sliderField('siPrincipal','Principal',100,1000000,100,50000,'')}
+  ${sliderField('siRate','Annual Rate',0.5,20,0.1,7,'%')}
+  ${sliderField('siYears','Years',1,40,1,5,' yrs')}
+`, 'siResult');
+bindLiveInputs('simple', ()=>{
+  const P = +document.getElementById('siPrincipal').value;
+  const r = +document.getElementById('siRate').value/100;
+  const t = +document.getElementById('siYears').value;
+  const interest = P*r*t, total = P+interest;
+  document.getElementById('siResult').innerHTML = `
+    <div class="result-box"><div class="big">$${fmt(total,2)}</div><div class="cap">Total Amount</div></div>
+    <table class="summary-table"><tr><td>Principal</td><td>$${fmt(P,0)}</td></tr><tr><td>Interest</td><td>$${fmt(interest,0)}</td></tr></table>`;
+  drawBarChart(document.getElementById('siResult-chart'), ['Principal','Interest'], [P, interest]);
+  window._siLast={P,interest,total};
+});
+downloadSummaryBtn('siResult-download', ()=>'Simple Interest Summary', ()=>{
+  const d = window._siLast; if(!d) return null;
+  return `Simple Interest Summary\n========================\nPrincipal: ${fmt(d.P,2)}\nInterest: ${fmt(d.interest,2)}\nTotal: ${fmt(d.total,2)}\n`;
+});
+
+/* ---- Savings Growth (recurring deposit) ---- */
+financialCardShell('savings','Savings Growth Calculator', `
+  ${sliderField('svMonthly','Monthly Deposit',10,20000,10,300,'')}
+  ${sliderField('svRate','Annual Rate',0.5,15,0.1,5,'%')}
+  ${sliderField('svYears','Years',1,40,1,10,' yrs')}
+`, 'svResult');
+bindLiveInputs('savings', ()=>{
+  const M = +document.getElementById('svMonthly').value;
+  const r = +document.getElementById('svRate').value/1200;
+  const n = +document.getElementById('svYears').value*12;
+  const fv = r===0 ? M*n : M*((Math.pow(1+r,n)-1)/r)*(1+r);
+  const contributed = M*n;
+  document.getElementById('svResult').innerHTML = `
+    <div class="result-box"><div class="big">$${fmt(fv,2)}</div><div class="cap">Future Value</div></div>
+    <table class="summary-table"><tr><td>Total Contributed</td><td>$${fmt(contributed,0)}</td></tr><tr><td>Interest Earned</td><td>$${fmt(fv-contributed,0)}</td></tr></table>`;
+  drawBarChart(document.getElementById('svResult-chart'), ['Contributed','Interest'], [contributed, fv-contributed]);
+  window._svLast={fv,contributed};
+});
+downloadSummaryBtn('svResult-download', ()=>'Savings Growth Summary', ()=>{
+  const d = window._svLast; if(!d) return null;
+  return `Savings Growth Summary\n======================\nContributed: ${fmt(d.contributed,2)}\nFuture Value: ${fmt(d.fv,2)}\n`;
+});
+
+/* ---- Investment Return (CAGR/FV) ---- */
+financialCardShell('invest','Investment Return Calculator', `
+  ${sliderField('ivInitial','Initial Investment',100,1000000,100,10000,'')}
+  ${sliderField('ivFinal','Final Value',100,5000000,100,25000,'')}
+  ${sliderField('ivYears','Years Held',1,40,1,5,' yrs')}
+`, 'ivResult');
+bindLiveInputs('invest', ()=>{
+  const i0 = +document.getElementById('ivInitial').value;
+  const fv = +document.getElementById('ivFinal').value;
+  const t = +document.getElementById('ivYears').value;
+  const cagr = (Math.pow(fv/i0, 1/t)-1)*100;
+  document.getElementById('ivResult').innerHTML = `
+    <div class="result-box"><div class="big">${fmt(cagr,2)}%</div><div class="cap">CAGR</div></div>
+    <table class="summary-table"><tr><td>Total Gain</td><td>$${fmt(fv-i0,0)}</td></tr><tr><td>Total Return</td><td>${fmt(((fv-i0)/i0)*100,1)}%</td></tr></table>`;
+  const labels=[],vals=[];
+  for(let y=0;y<=t;y++){ labels.push('Y'+y); vals.push(i0*Math.pow(fv/i0,y/t)); }
+  drawLineChart(document.getElementById('ivResult-chart'), labels, vals);
+  window._ivLast={cagr,i0,fv};
+});
+downloadSummaryBtn('ivResult-download', ()=>'Investment Return Summary', ()=>{
+  const d = window._ivLast; if(!d) return null;
+  return `Investment Return Summary\n=========================\nInitial: ${fmt(d.i0,2)}\nFinal: ${fmt(d.fv,2)}\nCAGR: ${fmt(d.cagr,2)}%\n`;
+});
+
+/* ---- SIP Calculator ---- */
+financialCardShell('sip','SIP Calculator', `
+  ${sliderField('sipAmt','Monthly SIP',500,200000,500,5000,'')}
+  ${sliderField('sipRate','Expected Annual Return',1,25,0.5,12,'%')}
+  ${sliderField('sipYears','Duration',1,40,1,15,' yrs')}
+`, 'sipResult');
+bindLiveInputs('sip', ()=>{
+  const M = +document.getElementById('sipAmt').value;
+  const r = +document.getElementById('sipRate').value/1200;
+  const n = +document.getElementById('sipYears').value*12;
+  const fv = M*((Math.pow(1+r,n)-1)/r)*(1+r);
+  const invested = M*n;
+  document.getElementById('sipResult').innerHTML = `
+    <div class="result-box"><div class="big">₹${fmt(fv,0)}</div><div class="cap">Maturity Value</div></div>
+    <table class="summary-table"><tr><td>Invested Amount</td><td>₹${fmt(invested,0)}</td></tr><tr><td>Wealth Gained</td><td>₹${fmt(fv-invested,0)}</td></tr></table>`;
+  drawBarChart(document.getElementById('sipResult-chart'), ['Invested','Gain'], [invested, fv-invested]);
+  window._sipLast={fv,invested};
+});
+downloadSummaryBtn('sipResult-download', ()=>'SIP Summary', ()=>{
+  const d = window._sipLast; if(!d) return null;
+  return `SIP Summary\n===========\nInvested: ${fmt(d.invested,2)}\nMaturity Value: ${fmt(d.fv,2)}\n`;
+});
+
+/* ---- Retirement Savings ---- */
+financialCardShell('retire','Retirement Savings Calculator', `
+  ${sliderField('rtAge','Current Age',18,70,1,30,'')}
+  ${sliderField('rtRetireAge','Retirement Age',40,80,1,60,'')}
+  ${sliderField('rtCurrent','Current Savings',0,2000000,1000,20000,'')}
+  ${sliderField('rtMonthly','Monthly Contribution',0,50000,50,500,'')}
+  ${sliderField('rtRate','Expected Annual Return',1,15,0.5,7,'%')}
+`, 'rtResult');
+bindLiveInputs('retire', ()=>{
+  const age = +document.getElementById('rtAge').value;
+  const retireAge = Math.max(+document.getElementById('rtRetireAge').value, age+1);
+  const cur = +document.getElementById('rtCurrent').value;
+  const M = +document.getElementById('rtMonthly').value;
+  const r = +document.getElementById('rtRate').value/1200;
+  const n = (retireAge-age)*12;
+  const fvCur = cur*Math.pow(1+r,n);
+  const fvContrib = r===0? M*n : M*((Math.pow(1+r,n)-1)/r)*(1+r);
+  const total = fvCur+fvContrib;
+  document.getElementById('rtResult').innerHTML = `
+    <div class="result-box"><div class="big">$${fmt(total,0)}</div><div class="cap">Projected Nest Egg at ${retireAge}</div></div>
+    <table class="summary-table"><tr><td>Years to Grow</td><td>${retireAge-age}</td></tr><tr><td>From Current Savings</td><td>$${fmt(fvCur,0)}</td></tr><tr><td>From Contributions</td><td>$${fmt(fvContrib,0)}</td></tr></table>`;
+  drawBarChart(document.getElementById('rtResult-chart'), ['Current→FV','Contributions'], [fvCur, fvContrib]);
+  window._rtLast={total,retireAge};
+});
+downloadSummaryBtn('rtResult-download', ()=>'Retirement Summary', ()=>{
+  const d = window._rtLast; if(!d) return null;
+  return `Retirement Savings Summary\n==========================\nProjected total at age ${d.retireAge}: ${fmt(d.total,2)}\n`;
+});
+
+/* ---- Inflation Calculator ---- */
+financialCardShell('inflation','Inflation Calculator', `
+  ${sliderField('infAmt','Current Amount',10,1000000,10,10000,'')}
+  ${sliderField('infRate','Avg Annual Inflation',1,15,0.1,6,'%')}
+  ${sliderField('infYears','Years',1,50,1,10,' yrs')}
+`, 'infResult');
+bindLiveInputs('inflation', ()=>{
+  const A = +document.getElementById('infAmt').value;
+  const r = +document.getElementById('infRate').value/100;
+  const t = +document.getElementById('infYears').value;
+  const future = A*Math.pow(1+r,t);
+  const realValue = A/Math.pow(1+r,t);
+  document.getElementById('infResult').innerHTML = `
+    <div class="result-box"><div class="big">$${fmt(future,2)}</div><div class="cap">Future Cost of Same Goods</div></div>
+    <table class="summary-table"><tr><td>Today's Value</td><td>$${fmt(A,2)}</td></tr><tr><td>Purchasing Power of $${fmt(A,0)} in ${t}y</td><td>$${fmt(realValue,2)}</td></tr></table>`;
+  const labels=[],vals=[];
+  for(let y=0;y<=t;y++){ labels.push('Y'+y); vals.push(A*Math.pow(1+r,y)); }
+  drawLineChart(document.getElementById('infResult-chart'), labels, vals);
+  window._infLast={future,A,t};
+});
+downloadSummaryBtn('infResult-download', ()=>'Inflation Summary', ()=>{
+  const d = window._infLast; if(!d) return null;
+  return `Inflation Summary\n==================\nCurrent Amount: ${fmt(d.A,2)}\nFuture Cost after ${d.t} yrs: ${fmt(d.future,2)}\n`;
+});
+
+/* ---- Currency Growth ---- */
+financialCardShell('curgrowth','Currency Growth Calculator', `
+  ${sliderField('cgAmt','Initial Amount (foreign currency)',10,1000000,10,1000,'')}
+  ${sliderField('cgRate','Annual Growth Rate',0.5,20,0.1,5,'%')}
+  ${sliderField('cgYears','Years',1,30,1,5,' yrs')}
+  <div class="field"><label>Currency Symbol</label><input class="input" id="cgSym" value="€"></div>
+`, 'cgResult');
+bindLiveInputs('curgrowth', ()=>{
+  const A = +document.getElementById('cgAmt').value;
+  const r = +document.getElementById('cgRate').value/100;
+  const t = +document.getElementById('cgYears').value;
+  const sym = document.getElementById('cgSym').value || '$';
+  const fv = A*Math.pow(1+r,t);
+  document.getElementById('cgResult').innerHTML = `
+    <div class="result-box"><div class="big">${sym}${fmt(fv,2)}</div><div class="cap">Future Value</div></div>
+    <table class="summary-table"><tr><td>Initial</td><td>${sym}${fmt(A,2)}</td></tr><tr><td>Growth</td><td>${sym}${fmt(fv-A,2)}</td></tr></table>`;
+  const labels=[],vals=[];
+  for(let y=0;y<=t;y++){ labels.push('Y'+y); vals.push(A*Math.pow(1+r,y)); }
+  drawLineChart(document.getElementById('cgResult-chart'), labels, vals);
+  window._cgLast={fv,A,sym};
+});
+downloadSummaryBtn('cgResult-download', ()=>'Currency Growth Summary', ()=>{
+  const d = window._cgLast; if(!d) return null;
+  return `Currency Growth Summary\n=======================\nInitial: ${d.sym}${fmt(d.A,2)}\nFuture Value: ${d.sym}${fmt(d.fv,2)}\n`;
+});
+
+/* =====================================================================================
+   11. HEALTH CALCULATORS
+===================================================================================== */
+function healthShell(id,title,formHtml){
+  return makeView(id, `
+  <div class="grid cols-2">
+    <div class="card"><h2>${title}</h2>${formHtml}</div>
+    <div class="card"><h2>Results</h2><div id="${id}Result"><div class="empty-note">Enter your details</div></div><canvas class="chart" id="${id}Chart"></canvas></div>
+  </div>`);
+}
+
+/* BMI */
+healthShell('bmi','BMI Calculator', `
+  <div class="field"><label>Units</label><div class="pillgroup" id="bmiUnits"><div class="pill active" data-u="metric">Metric</div><div class="pill" data-u="imperial">Imperial</div></div></div>
+  ${sliderField('bmiHeight','Height (cm)',100,220,1,170,' cm')}
+  ${sliderField('bmiWeight','Weight (kg)',30,200,1,70,' kg')}
+`);
+bindLiveInputs('bmi', ()=>{
+  const h = +document.getElementById('bmiHeight').value/100;
+  const w = +document.getElementById('bmiWeight').value;
+  const bmi = w/(h*h);
+  let cat='Normal', color='var(--good)';
+  if(bmi<18.5){cat='Underweight'; color='var(--warn)';} else if(bmi>=25 && bmi<30){cat='Overweight'; color='var(--warn)';} else if(bmi>=30){cat='Obese'; color='var(--danger)';}
+  document.getElementById('bmiResult').innerHTML = `
+    <div class="result-box" style="background:${color};"><div class="big">${fmt(bmi,1)}</div><div class="cap">${cat}</div></div>
+    <table class="summary-table"><tr><td>Healthy range (18.5–24.9)</td><td>${fmt(18.5*h*h,1)}–${fmt(24.9*h*h,1)} kg</td></tr></table>`;
+  drawBarChart(document.getElementById('bmiChart'), ['Under','Normal','Over','Obese'], [18.5,24.9,29.9, Math.max(bmi,30)]);
+});
+
+/* BMR */
+healthShell('bmr','BMR Calculator (Mifflin-St Jeor)', `
+  <div class="field"><label>Sex</label><div class="pillgroup" id="bmrSex"><div class="pill active" data-s="m">Male</div><div class="pill" data-s="f">Female</div></div></div>
+  ${sliderField('bmrAge','Age',10,90,1,25,' yrs')}
+  ${sliderField('bmrHeight','Height (cm)',100,220,1,170,' cm')}
+  ${sliderField('bmrWeight','Weight (kg)',30,200,1,70,' kg')}
+`);
+let bmrSex='m';
+document.getElementById('bmrSex').addEventListener('click',e=>{ const p=e.target.closest('.pill'); if(!p)return; bmrSex=p.dataset.s; $$('#bmrSex .pill').forEach(x=>x.classList.remove('active')); p.classList.add('active'); calcBmr(); });
+function calcBmr(){
+  const age=+document.getElementById('bmrAge').value, h=+document.getElementById('bmrHeight').value, w=+document.getElementById('bmrWeight').value;
+  const bmr = bmrSex==='m' ? 10*w+6.25*h-5*age+5 : 10*w+6.25*h-5*age-161;
+  document.getElementById('bmrResult').innerHTML = `<div class="result-box"><div class="big">${fmt(bmr,0)}</div><div class="cap">Calories / day at rest</div></div>
+  <table class="summary-table"><tr><td>Sedentary (BMR×1.2)</td><td>${fmt(bmr*1.2,0)} kcal</td></tr><tr><td>Active (BMR×1.55)</td><td>${fmt(bmr*1.55,0)} kcal</td></tr></table>`;
+  drawBarChart(document.getElementById('bmrChart'), ['Sedentary','Light','Moderate','Active'], [bmr*1.2,bmr*1.375,bmr*1.55,bmr*1.725]);
+}
+bindLiveInputs('bmr', calcBmr);
+
+/* Daily Calories (TDEE) */
+healthShell('calories','Daily Calorie Calculator (TDEE)', `
+  ${sliderField('calAge','Age',10,90,1,25,' yrs')}
+  ${sliderField('calHeight','Height (cm)',100,220,1,170,' cm')}
+  ${sliderField('calWeight','Weight (kg)',30,200,1,70,' kg')}
+  <div class="field"><label>Activity Level</label>
+  <select class="input" id="calActivity"><option value="1.2">Sedentary</option><option value="1.375">Lightly Active</option><option value="1.55" selected>Moderately Active</option><option value="1.725">Very Active</option><option value="1.9">Extremely Active</option></select></div>
+  <div class="field"><label>Goal</label>
+  <select class="input" id="calGoal"><option value="-500">Lose Weight</option><option value="0" selected>Maintain</option><option value="500">Gain Weight</option></select></div>
+`);
+bindLiveInputs('calories', ()=>{
+  const age=+document.getElementById('calAge').value,h=+document.getElementById('calHeight').value,w=+document.getElementById('calWeight').value;
+  const bmr = 10*w+6.25*h-5*age+5;
+  const tdee = bmr*(+document.getElementById('calActivity').value);
+  const goal = tdee + (+document.getElementById('calGoal').value);
+  document.getElementById('caloriesResult').innerHTML = `<div class="result-box"><div class="big">${fmt(goal,0)}</div><div class="cap">Target Daily Calories</div></div>
+  <table class="summary-table"><tr><td>BMR</td><td>${fmt(bmr,0)} kcal</td></tr><tr><td>TDEE (maintenance)</td><td>${fmt(tdee,0)} kcal</td></tr></table>`;
+  drawBarChart(document.getElementById('caloriesChart'), ['BMR','TDEE','Goal'], [bmr,tdee,goal]);
+});
+
+/* Body Fat % (Navy method) */
+healthShell('bodyfat','Body Fat % Estimator (U.S. Navy method)', `
+  <div class="field"><label>Sex</label><div class="pillgroup" id="bfSex"><div class="pill active" data-s="m">Male</div><div class="pill" data-s="f">Female</div></div></div>
+  ${sliderField('bfHeight','Height (cm)',100,220,1,170,' cm')}
+  ${sliderField('bfWaist','Waist (cm)',50,180,1,85,' cm')}
+  ${sliderField('bfNeck','Neck (cm)',20,70,1,38,' cm')}
+  <div class="field" id="bfHipWrap" style="display:none;">${sliderField('bfHip','Hip (cm)',50,180,1,95,' cm')}</div>
+`);
+let bfSex='m';
+document.getElementById('bfSex').addEventListener('click', e=>{ const p=e.target.closest('.pill'); if(!p)return; bfSex=p.dataset.s; $$('#bfSex .pill').forEach(x=>x.classList.remove('active')); p.classList.add('active'); document.getElementById('bfHipWrap').style.display = bfSex==='f'?'block':'none'; calcBodyFat(); });
+function calcBodyFat(){
+  const h=+document.getElementById('bfHeight').value, waist=+document.getElementById('bfWaist').value, neck=+document.getElementById('bfNeck').value;
+  let bf;
+  if(bfSex==='m'){ bf = 495/(1.0324-0.19077*Math.log10(waist-neck)+0.15456*Math.log10(h))-450; }
+  else { const hip=+document.getElementById('bfHip').value; bf = 495/(1.29579-0.35004*Math.log10(waist+hip-neck)+0.22100*Math.log10(h))-450; }
+  bf = clamp(bf,2,60);
+  let cat='Fitness'; if(bf<6)cat='Essential Fat'; else if(bf<14)cat='Athletic'; else if(bf<18)cat='Fitness'; else if(bf<25)cat='Average'; else cat='Obese';
+  document.getElementById('bodyfatResult').innerHTML = `<div class="result-box"><div class="big">${fmt(bf,1)}%</div><div class="cap">${cat}</div></div>`;
+  drawBarChart(document.getElementById('bodyfatChart'), ['Essential','Athletic','Fitness','Average','Obese'], [4,10,16,22,28].map(v=>v===Math.round(bf/6)*6?bf:v));
+}
+bindLiveInputs('bodyfat', calcBodyFat);
+
+/* Age Calculator */
+healthShell('agecalc','Age Calculator', `
+  <div class="field"><label>Date of Birth</label><input class="input" type="date" id="ageDob"></div>
+  <div class="field"><label>As of Date</label><input class="input" type="date" id="ageAsOf"></div>
+`);
+(function(){
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('ageAsOf').value = today;
+})();
+bindLiveInputs('agecalc', ()=>{
+  const dobStr = document.getElementById('ageDob').value;
+  const asOfStr = document.getElementById('ageAsOf').value;
+  if(!dobStr || !asOfStr){ document.getElementById('agecalcResult').innerHTML='<div class="empty-note">Pick both dates</div>'; return; }
+  const dob = new Date(dobStr), asOf = new Date(asOfStr);
+  if(asOf<dob){ document.getElementById('agecalcResult').innerHTML='<div class="empty-note">As-of date must be after birth date</div>'; return; }
+  let y = asOf.getFullYear()-dob.getFullYear(), m = asOf.getMonth()-dob.getMonth(), d = asOf.getDate()-dob.getDate();
+  if(d<0){ m--; d += new Date(asOf.getFullYear(), asOf.getMonth(),0).getDate(); }
+  if(m<0){ y--; m+=12; }
+  const totalDays = Math.floor((asOf-dob)/86400000);
+  document.getElementById('agecalcResult').innerHTML = `
+    <div class="result-box"><div class="big">${y}y ${m}m ${d}d</div><div class="cap">Exact Age</div></div>
+    <table class="summary-table"><tr><td>Total Days</td><td>${fmtInt(totalDays)}</td></tr><tr><td>Total Weeks</td><td>${fmtInt(totalDays/7)}</td></tr><tr><td>Total Months</td><td>${fmtInt(y*12+m)}</td></tr></table>`;
+});
+
+/* Water Intake */
+healthShell('water','Water Intake Calculator', `
+  ${sliderField('waterWeight','Weight (kg)',20,200,1,70,' kg')}
+  <div class="field"><label>Activity Level</label><select class="input" id="waterActivity"><option value="0">Sedentary</option><option value="350" selected>Moderate</option><option value="700">Intense</option></select></div>
+  <div class="field"><label>Climate</label><select class="input" id="waterClimate"><option value="0">Temperate</option><option value="500">Hot / Humid</option></select></div>
+`);
+bindLiveInputs('water', ()=>{
+  const w=+document.getElementById('waterWeight').value;
+  const base = w*35;
+  const total = base + (+document.getElementById('waterActivity').value) + (+document.getElementById('waterClimate').value);
+  document.getElementById('waterResult').innerHTML = `<div class="result-box"><div class="big">${fmt(total/1000,2)} L</div><div class="cap">Recommended Daily Water</div></div>
+  <table class="summary-table"><tr><td>Base need</td><td>${fmt(base/1000,2)} L</td></tr><tr><td>Glasses (250ml)</td><td>${Math.round(total/250)}</td></tr></table>`;
+  drawBarChart(document.getElementById('waterChart'), ['Base','Activity','Climate'], [base, +document.getElementById('waterActivity').value, +document.getElementById('waterClimate').value]);
+});
+
+/* Heart Rate Zones */
+healthShell('hr','Heart Rate Zones Calculator', `
+  ${sliderField('hrAge','Age',10,90,1,30,' yrs')}
+  ${sliderField('hrRest','Resting Heart Rate',30,110,1,65,' bpm')}
+`);
+bindLiveInputs('hr', ()=>{
+  const age=+document.getElementById('hrAge').value, rest=+document.getElementById('hrRest').value;
+  const max = 220-age;
+  const zones = [
+    {n:'Warm Up',lo:.5,hi:.6},{n:'Fat Burn',lo:.6,hi:.7},{n:'Cardio',lo:.7,hi:.8},{n:'Peak',lo:.8,hi:.9},{n:'Max',lo:.9,hi:1}
+  ].map(z=>({n:z.n, lo:Math.round(rest+(max-rest)*z.lo), hi:Math.round(rest+(max-rest)*z.hi)}));
+  document.getElementById('hrResult').innerHTML = `<div class="result-box"><div class="big">${max}</div><div class="cap">Max Heart Rate (bpm)</div></div>
+  <table class="summary-table">${zones.map(z=>`<tr><td>${z.n}</td><td>${z.lo}–${z.hi} bpm</td></tr>`).join('')}</table>`;
+  drawBarChart(document.getElementById('hrChart'), zones.map(z=>z.n.split(' ')[0]), zones.map(z=>z.hi));
+});
+
+/* Macro Nutrients */
+healthShell('macro','Macro Nutrient Calculator', `
+  ${sliderField('macroCal','Daily Calories',1000,6000,50,2200,' kcal')}
+  <div class="field"><label>Diet Style</label><select class="input" id="macroStyle">
+  <option value="balanced">Balanced (30/40/30)</option><option value="lowcarb">Low Carb (40/20/40)</option><option value="highcarb">High Carb (20/60/20)</option></select></div>
+`);
+bindLiveInputs('macro', ()=>{
+  const cal=+document.getElementById('macroCal').value;
+  const styles={balanced:[.3,.4,.3], lowcarb:[.4,.2,.4], highcarb:[.2,.6,.2]};
+  const [p,c,f] = styles[document.getElementById('macroStyle').value];
+  const pg=(cal*p)/4, cg=(cal*c)/4, fg=(cal*f)/9;
+  document.getElementById('macroResult').innerHTML = `<div class="result-box"><div class="big">${fmt(pg,0)}g / ${fmt(cg,0)}g / ${fmt(fg,0)}g</div><div class="cap">Protein / Carbs / Fat</div></div>
+  <table class="summary-table"><tr><td>Protein</td><td>${fmt(pg,0)} g (${fmt(p*100,0)}%)</td></tr><tr><td>Carbs</td><td>${fmt(cg,0)} g (${fmt(c*100,0)}%)</td></tr><tr><td>Fat</td><td>${fmt(fg,0)} g (${fmt(f*100,0)}%)</td></tr></table>`;
+  drawBarChart(document.getElementById('macroChart'), ['Protein','Carbs','Fat'], [pg,cg,fg]);
+});
+
+/* Ideal Weight (Devine) */
+healthShell('idealweight','Ideal Weight Calculator (Devine formula)', `
+  <div class="field"><label>Sex</label><div class="pillgroup" id="iwSex"><div class="pill active" data-s="m">Male</div><div class="pill" data-s="f">Female</div></div></div>
+  ${sliderField('iwHeight','Height (cm)',120,220,1,170,' cm')}
+`);
+let iwSex='m';
+document.getElementById('iwSex').addEventListener('click', e=>{ const p=e.target.closest('.pill'); if(!p)return; iwSex=p.dataset.s; $$('#iwSex .pill').forEach(x=>x.classList.remove('active')); p.classList.add('active'); calcIdeal(); });
+function calcIdeal(){
+  const h = +document.getElementById('iwHeight').value;
+  const inches = h/2.54;
+  const over5ft = Math.max(inches-60,0);
+  const ideal = iwSex==='m' ? 50+2.3*over5ft : 45.5+2.3*over5ft;
+  document.getElementById('idealweightResult').innerHTML = `<div class="result-box"><div class="big">${fmt(ideal,1)} kg</div><div class="cap">Ideal Body Weight</div></div>
+  <table class="summary-table"><tr><td>Healthy Range</td><td>${fmt(ideal*0.9,1)}–${fmt(ideal*1.1,1)} kg</td></tr></table>`;
+  drawBarChart(document.getElementById('idealweightChart'), ['-10%','Ideal','+10%'], [ideal*0.9, ideal, ideal*1.1]);
+}
+bindLiveInputs('idealweight', calcIdeal);
+
+/* Calorie Burn */
+healthShell('burn','Calorie Burn Estimator', `
+  ${sliderField('burnWeight','Weight (kg)',30,200,1,70,' kg')}
+  ${sliderField('burnMin','Duration (minutes)',5,240,5,30,' min')}
+  <div class="field"><label>Activity</label><select class="input" id="burnAct">
+  <option value="7.0">Running (moderate)</option><option value="8.0">Cycling</option><option value="3.8">Walking</option>
+  <option value="8.0">Swimming</option><option value="6.0">Weight Training</option><option value="9.8">HIIT</option><option value="4.0">Yoga</option></select></div>
+`);
+bindLiveInputs('burn', ()=>{
+  const w=+document.getElementById('burnWeight').value, min=+document.getElementById('burnMin').value, met=+document.getElementById('burnAct').value;
+  const kcal = met*3.5*w/200*min;
+  document.getElementById('burnResult').innerHTML = `<div class="result-box"><div class="big">${fmt(kcal,0)}</div><div class="cap">Calories Burned</div></div>
+  <table class="summary-table"><tr><td>MET value</td><td>${met}</td></tr><tr><td>Rate</td><td>${fmt(kcal/(min/60),0)} kcal/hr</td></tr></table>`;
+  drawBarChart(document.getElementById('burnChart'), ['15m','30m','45m','60m'], [15,30,45,60].map(m=>met*3.5*w/200*m));
+});
+
+/* =====================================================================================
+   12. UNIT CONVERTERS (generic engine)
+===================================================================================== */
+const UNIT_GROUPS = {
+  length:{base:'m', units:{m:1, km:1000, cm:0.01, mm:0.001, mi:1609.344, yd:0.9144, ft:0.3048, 'in':0.0254, nmi:1852}},
+  weight:{base:'kg', units:{kg:1, g:0.001, mg:0.000001, lb:0.45359237, oz:0.0283495231, ton:1000, stone:6.35029}},
+  area:{base:'m2', units:{'m²':1,'km²':1e6,'cm²':0.0001,'ha':10000,'acre':4046.8564224,'ft²':0.09290304,'mi²':2589988.110336}},
+  volume:{base:'L', units:{'L':1,'mL':0.001,'m³':1000,'gal (US)':3.785411784,'qt':0.946352946,'cup':0.2365882365,'fl oz':0.0295735296,'tbsp':0.0147867648,'tsp':0.00492892159}},
+  speed:{base:'m/s', units:{'m/s':1,'km/h':0.277778,'mph':0.44704,'knot':0.514444,'ft/s':0.3048}},
+  time:{base:'s', units:{s:1,min:60,hr:3600,day:86400,week:604800,month:2629800,year:31557600,ms:0.001}},
+  pressure:{base:'Pa', units:{'Pa':1,'kPa':1000,'bar':100000,'atm':101325,'psi':6894.757293168,'mmHg':133.322387415}},
+  energy:{base:'J', units:{'J':1,'kJ':1000,'cal':4.184,'kcal':4184,'Wh':3600,'kWh':3600000,'BTU':1055.05585262}},
+  power:{base:'W', units:{'W':1,'kW':1000,'MW':1000000,'hp':745.699872,'BTU/h':0.29307107}},
+  freq:{base:'Hz', units:{'Hz':1,'kHz':1000,'MHz':1000000,'GHz':1000000000,'rpm':0.0166667}},
+  data:{base:'byte', units:{bit:0.125, byte:1, KB:1024, MB:1048576, GB:1073741824, TB:1099511627776, Kb:128, Mb:131072, Gb:134217728}},
+  angle:{base:'deg', units:{deg:1, rad:57.29577951308232, grad:0.9, arcmin:1/60, arcsec:1/3600}},
+};
+function genericConverterView(id, title, groupKey){
+  const g = UNIT_GROUPS[groupKey];
+  const opts = Object.keys(g.units).map(u=>`<option value="${u}">${u}</option>`).join('');
+  makeView(id, `
+  <div class="card">
+    <h2>${title} Converter</h2>
+    <div class="conv-io">
+      <div class="field"><label>From</label><select class="input" id="${id}-from">${opts}</select><input class="input" style="margin-top:8px;" id="${id}-val" type="text" inputmode="decimal" value="1"></div>
+      <button class="conv-swap" id="${id}-swap" title="Swap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h13l-4-4M17 17H4l4 4"/></svg></button>
+      <div class="field"><label>To</label><select class="input" id="${id}-to">${opts}</select><input class="input" style="margin-top:8px;" id="${id}-out" type="text" readonly></div>
+    </div>
+    <div id="${id}-all" style="margin-top:16px;"></div>
+  </div>`);
+  const from = document.getElementById(id+'-from'), to = document.getElementById(id+'-to'), val = document.getElementById(id+'-val'), out = document.getElementById(id+'-out');
+  const keys = Object.keys(g.units); to.value = keys[1]||keys[0];
+  function compute(){
+    const v = parseFloat(val.value); const outAll = document.getElementById(id+'-all');
+    if(isNaN(v)){ out.value=''; outAll.innerHTML='<div class="empty-note">Enter a value</div>'; return; }
+    let base;
+    if(groupKey==='temperature') base = tempToBase(v, from.value);
+    else base = v*g.units[from.value];
+    let result;
+    if(groupKey==='temperature') result = tempFromBase(base, to.value);
+    else result = base/g.units[to.value];
+    out.value = trimNumber(result);
+    outAll.innerHTML = '<table class="summary-table">'+keys.map(k=>{
+      let r = groupKey==='temperature' ? tempFromBase(base,k) : base/g.units[k];
+      return `<tr><td>${k}</td><td>${trimNumber(r)}</td></tr>`;
+    }).join('')+'</table>';
+  }
+  function trimNumber(n){ if(!isFinite(n)) return '—'; return Math.abs(n)>=1e6||Math.abs(n)<1e-4&&n!==0 ? n.toExponential(4) : (Math.round(n*1e6)/1e6).toLocaleString(undefined,{maximumFractionDigits:6}); }
+  [from,to,val].forEach(el=>el.addEventListener('input', compute));
+  document.getElementById(id+'-swap').addEventListener('click', ()=>{ const f=from.value; from.value=to.value; to.value=f; compute(); });
+  compute();
+}
+/* Temperature special-case */
+function tempToBase(v,unit){ if(unit==='°C') return v; if(unit==='°F') return (v-32)*5/9; if(unit==='K') return v-273.15; return v; }
+function tempFromBase(c,unit){ if(unit==='°C') return c; if(unit==='°F') return c*9/5+32; if(unit==='K') return c+273.15; return c; }
+function temperatureView(){
+  makeView('conv-temp', `
+  <div class="card">
+    <h2>Temperature Converter</h2>
+    <div class="conv-io">
+      <div class="field"><label>From</label><select class="input" id="temp-from"><option>°C</option><option>°F</option><option>K</option></select><input class="input" style="margin-top:8px;" id="temp-val" type="text" inputmode="decimal" value="25"></div>
+      <button class="conv-swap" id="temp-swap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h13l-4-4M17 17H4l4 4"/></svg></button>
+      <div class="field"><label>To</label><select class="input" id="temp-to"><option>°C</option><option selected>°F</option><option>K</option></select><input class="input" style="margin-top:8px;" id="temp-out" readonly></div>
+    </div>
+    <div id="temp-all" style="margin-top:16px;"></div>
+  </div>`);
+  const from=document.getElementById('temp-from'), to=document.getElementById('temp-to'), val=document.getElementById('temp-val'), out=document.getElementById('temp-out');
+  function compute(){
+    const v=parseFloat(val.value); if(isNaN(v)){ out.value=''; return; }
+    const c = tempToBase(v, from.value);
+    out.value = fmt(tempFromBase(c, to.value),2);
+    document.getElementById('temp-all').innerHTML = `<table class="summary-table"><tr><td>°C</td><td>${fmt(tempFromBase(c,'°C'),2)}</td></tr><tr><td>°F</td><td>${fmt(tempFromBase(c,'°F'),2)}</td></tr><tr><td>K</td><td>${fmt(tempFromBase(c,'K'),2)}</td></tr></table>`;
+  }
+  [from,to,val].forEach(el=>el.addEventListener('input',compute));
+  document.getElementById('temp-swap').addEventListener('click',()=>{ const f=from.value; from.value=to.value; to.value=f; compute(); });
+  compute();
+}
+temperatureView();
+genericConverterView('conv-length','Length','length');
+genericConverterView('conv-weight','Weight','weight');
+genericConverterView('conv-area','Area','area');
+genericConverterView('conv-volume','Volume','volume');
+genericConverterView('conv-speed','Speed','speed');
+genericConverterView('conv-time','Time','time');
+genericConverterView('conv-pressure','Pressure','pressure');
+genericConverterView('conv-energy','Energy','energy');
+genericConverterView('conv-power','Power','power');
+genericConverterView('conv-freq','Frequency','freq');
+genericConverterView('conv-data','Data Storage','data');
+genericConverterView('conv-angle','Angle','angle');
+
+/* Fuel economy — special (inverse relationship handled) */
+makeView('conv-fuel', `
+<div class="card">
+  <h2>Fuel Economy Converter</h2>
+  <div class="conv-io">
+    <div class="field"><label>From</label><select class="input" id="fuel-from"><option value="mpg">mpg (US)</option><option value="kml">km/L</option><option value="l100">L/100km</option></select>
+    <input class="input" style="margin-top:8px;" id="fuel-val" type="text" inputmode="decimal" value="30"></div>
+    <button class="conv-swap" id="fuel-swap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h13l-4-4M17 17H4l4 4"/></svg></button>
+    <div class="field"><label>To</label><select class="input" id="fuel-to"><option value="mpg">mpg (US)</option><option value="kml" selected>km/L</option><option value="l100">L/100km</option></select>
+    <input class="input" style="margin-top:8px;" id="fuel-out" readonly></div>
+  </div>
+  <div id="fuel-all" style="margin-top:16px;"></div>
+</div>`);
+(function(){
+  const KML_PER_MPG = 0.425144;
+  function toKmL(v,unit){ if(unit==='kml') return v; if(unit==='mpg') return v*KML_PER_MPG; if(unit==='l100') return 100/v; }
+  function fromKmL(kml,unit){ if(unit==='kml') return kml; if(unit==='mpg') return kml/KML_PER_MPG; if(unit==='l100') return 100/kml; }
+  const from=document.getElementById('fuel-from'),to=document.getElementById('fuel-to'),val=document.getElementById('fuel-val'),out=document.getElementById('fuel-out');
+  function compute(){
+    const v=parseFloat(val.value); if(isNaN(v)||v===0){ out.value=''; return; }
+    const kml = toKmL(v, from.value);
+    out.value = fmt(fromKmL(kml, to.value),2);
+    document.getElementById('fuel-all').innerHTML = `<table class="summary-table"><tr><td>mpg (US)</td><td>${fmt(fromKmL(kml,'mpg'),2)}</td></tr><tr><td>km/L</td><td>${fmt(fromKmL(kml,'kml'),2)}</td></tr><tr><td>L/100km</td><td>${fmt(fromKmL(kml,'l100'),2)}</td></tr></table>`;
+  }
+  [from,to,val].forEach(el=>el.addEventListener('input',compute));
+  document.getElementById('fuel-swap').addEventListener('click',()=>{ const f=from.value; from.value=to.value; to.value=f; compute(); });
+  compute();
+})();
+
+/* =====================================================================================
+   13. CURRENCY CONVERTER (offline, editable rate table)
+===================================================================================== */
+const DEFAULT_RATES = { USD:1, EUR:0.92, GBP:0.79, JPY:156.2, INR:83.4, AUD:1.52, CAD:1.36, CHF:0.90, CNY:7.24, SGD:1.35, AED:3.67, ZAR:18.4, BRL:5.4, RUB:92.5, KRW:1365, MXN:18.1, NZD:1.65, SEK:10.5, NOK:10.9, HKD:7.82 };
+if(!Store.data.currencyRates) Store.data.currencyRates = {...DEFAULT_RATES};
+const RATES = Store.data.currencyRates;
+
+makeView('currency', `
+<div class="grid cols-2">
+  <div class="card">
+    <h2>Currency Converter</h2>
+    <div class="conv-io">
+      <div class="field"><label>Amount</label><input class="input" id="curAmt" type="text" inputmode="decimal" value="100">
+      <select class="input" style="margin-top:8px;" id="curFrom"></select></div>
+      <button class="conv-swap" id="curSwap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h13l-4-4M17 17H4l4 4"/></svg></button>
+      <div class="field"><label>Converted</label><input class="input" id="curOut" readonly>
+      <select class="input" style="margin-top:8px;" id="curTo"></select></div>
+    </div>
+    <div class="result-box" id="curResultBox" style="margin-top:14px;"></div>
+    <p style="font-size:11.5px;color:var(--text-dim);margin-top:10px;">Rates are stored locally and offline (relative to USD). Edit them in the table for your own reference values →</p>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2 style="margin:0;">Exchange Rate Table (per USD)</h2>
+      <button class="btn secondary small" id="curReset">Reset</button>
+    </div>
+    <div class="search-box" style="margin-top:12px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="curSearch" placeholder="Search currency…"></div>
+    <div class="currency-list" id="curList"></div>
+  </div>
+</div>`);
+(function(){
+  const fromSel=document.getElementById('curFrom'), toSel=document.getElementById('curTo'), amt=document.getElementById('curAmt'), out=document.getElementById('curOut');
+  function codes(){ return Object.keys(RATES); }
+  function fillSelects(){
+    const opts = codes().map(c=>`<option value="${c}">${c}</option>`).join('');
+    fromSel.innerHTML = opts; toSel.innerHTML = opts;
+    fromSel.value='USD'; toSel.value = codes().includes('INR')?'INR':codes()[1];
+  }
+  function compute(){
+    const v = parseFloat(amt.value); if(isNaN(v)){ out.value=''; return; }
+    const usd = v/RATES[fromSel.value];
+    const result = usd*RATES[toSel.value];
+    out.value = fmt(result,2);
+    document.getElementById('curResultBox').innerHTML = `<div class="big">${fmt(v,2)} ${fromSel.value} = ${fmt(result,2)} ${toSel.value}</div><div class="cap">1 ${fromSel.value} = ${fmt(RATES[toSel.value]/RATES[fromSel.value],4)} ${toSel.value}</div>`;
+  }
+  [fromSel,toSel,amt].forEach(el=>el.addEventListener('input',compute));
+  document.getElementById('curSwap').addEventListener('click',()=>{ const f=fromSel.value; fromSel.value=toSel.value; toSel.value=f; compute(); });
+
+  function renderList(filter=''){
+    const list = document.getElementById('curList');
+    const f = filter.toLowerCase();
+    list.innerHTML = codes().filter(c=>c.toLowerCase().includes(f)).map(c=>{
+      const fav = Store.data.favorites.includes('cur-'+c);
+      return `<div class="currency-row"><span class="code">${c}</span><input class="rate" type="text" data-code="${c}" value="${RATES[c]}">
+      <svg class="fav ${fav?'on':''}" data-favc="${c}" viewBox="0 0 24 24" fill="${fav?'currentColor':'none'}" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg></div>`;
+    }).join('');
+    $$('#curList .rate').forEach(inp=>{
+      inp.addEventListener('change', ()=>{
+        const v = parseFloat(inp.value); if(!isNaN(v)&&v>0){ RATES[inp.dataset.code]=v; Store.save(); compute(); toast('Rate updated'); }
+      });
+    });
+    $$('#curList .fav').forEach(f=>{
+      f.addEventListener('click', ()=>{ Store.toggleFavorite('cur-'+f.dataset.favc); renderList(document.getElementById('curSearch').value); });
+    });
+  }
+  document.getElementById('curSearch').addEventListener('input', e=>renderList(e.target.value));
+  document.getElementById('curReset').addEventListener('click', ()=>{
+    Object.assign(RATES, DEFAULT_RATES); Store.save(); renderList(); compute(); toast('Rates reset to default');
+  });
+  fillSelects(); renderList(); compute();
+})();
+
+/* =====================================================================================
+   14. INITIAL BOOT
+===================================================================================== */
+renderNav();
+navigateTo('standard');
+rippleAll(document);
+new MutationObserver(()=>rippleAll(document)).observe(viewsRoot,{childList:true,subtree:true});
+renderHistory();
+</script>
+</body>
+</html>
